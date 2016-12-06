@@ -14,7 +14,7 @@ Why would you do this?
 
 We have unpredictable, resource-intensive jobs. Rather than dedicating large 
 nodes in our cluster to run the resque workers, where the resources would be 
-idle when there are no jobs to run, we can use autoscaling to add nodes when
+idle when there are no jobs to run, we can use auto-scaling to add nodes when
 Kubernetes Job gets created and shut them down when those jobs are complete. 
 
 ## Installation
@@ -35,12 +35,11 @@ Or install it yourself as:
 
 ## Usage
 
-For any Resque job that you want to run in a Kubernetes pod, you'll need to
-modify the job class with three things:
+For any Resque job that you want to run in a Kubernetes job, you'll need to
+modify the job class with two things:
 
 - extend the class with `Resque::Kubernetes::Job`
 - and add a method `job_manifest` that returns the Kubernetes manifest for the job
-- make sure that the worker is started with `TERM_ON_EMPTY` environment variable set
 
 ```ruby
 class ResourceIntensiveJob
@@ -52,8 +51,6 @@ class ResourceIntensiveJob
   
   def job_manifest
     <<-EOD
-apiVersion: batch/v1
-kind: Job
 metadata:
   name: worker-job
 spec:
@@ -67,16 +64,21 @@ spec:
         env:
         - name: QUEUE
           value: high-memory
-        - name: TERM_ON_EMPTY
-          value: 1
     EOD
   end
 end
 ```
-The `TERM_ON_EMPTY` environment variable is critical for the flow. This tells 
-this worker that whenever the queue is empty is should terminate the worker.
-Kubernetes will then terminate the Job when the container is done running and
-will release the resources.
+
+Make sure that the container image above, which is used to run the resque 
+worker, is built to include the `resque-kubernetes` gem as well. The gem will 
+add `TERM_ON_EMPTY` to the environment variables. This tells the worker that 
+whenever the queue is empty it should terminate the worker. Kubernetes will 
+then terminate the Job when the container is done running and will release the 
+resources.
+
+## Configuration
+
+
 
 ## Development
 
