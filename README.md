@@ -87,6 +87,7 @@ your project:
 Resque::Kubernetes.configuration do |config|
 
  config.environments << "staging"
+ config.max_workers = 10
 
 end
 ```
