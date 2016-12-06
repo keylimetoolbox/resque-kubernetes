@@ -71,22 +71,26 @@ describe Resque::Kubernetes::Job do
       end
 
       context "and is included in the supported environments" do
+        before do
+          allow(Resque::Kubernetes).to receive(:environments).and_return(["test"])
+        end
+
         it "calls kubernetes APIs" do
-          with_environments(["test"]) do
-            expect(subject).to receive(:jobs_client).and_return(jobs_client)
-            expect(subject).to receive(:pods_client).and_return(pods_client)
-            subject.before_enqueue_kubernetes_job
-          end
+          expect(subject).to receive(:jobs_client).and_return(jobs_client)
+          expect(subject).to receive(:pods_client).and_return(pods_client)
+          subject.before_enqueue_kubernetes_job
         end
       end
 
       context "and is not included in the supported environments" do
+        before do
+          allow(Resque::Kubernetes).to receive(:environments).and_return(["production"])
+        end
+
         it "does not make any kubernetes calls" do
-          with_environments("production") do
-            expect(subject).not_to receive(:jobs_client)
-            expect(subject).not_to receive(:pods_client)
-            subject.before_enqueue_kubernetes_job
-          end
+          expect(subject).not_to receive(:jobs_client)
+          expect(subject).not_to receive(:pods_client)
+          subject.before_enqueue_kubernetes_job
         end
       end
     end
@@ -103,9 +107,10 @@ describe Resque::Kubernetes::Job do
       subject.before_enqueue_kubernetes_job
     end
 
-    context "when the job already exists and is running" do
+    context "when the maximum number of matching, working jobs is met" do
       before do
-        allow(jobs_client).to receive(:get_job).and_return(working_job)
+        allow(Resque::Kubernetes).to receive(:max_workers).and_return(1)
+        allow(jobs_client).to receive(:get_jobs).and_return([working_job])
       end
 
       it "does not try to create a new job" do
@@ -114,20 +119,33 @@ describe Resque::Kubernetes::Job do
       end
     end
 
-    context "when the the job does not exist" do
+    context "when matching, completed jobs exist" do
+      before do
+        allow(Resque::Kubernetes).to receive(:max_workers).and_return(2)
+        allow(jobs_client).to receive(:get_jobs).and_return([done_job, working_job])
+      end
+
+      it "creates a new job using the provided job manifest" do
+        expect(jobs_client).to receive(:create_job)
+        subject.before_enqueue_kubernetes_job
+      end
+    end
+
+    context "when more job workers can be launched" do
       let(:job) { double("job") }
 
       before do
-        allow(jobs_client).to receive(:get_job).and_return(nil)
+        allow(Resque::Kubernetes).to receive(:max_workers).and_return(10)
+        allow(jobs_client).to receive(:get_jobs).and_return([])
         allow(Kubeclient::Resource).to receive(:new).and_return(job)
       end
 
       it "creates a new job using the provided job manifest" do
-        expect(jobs_client).to receive(:create_job).with(job)
+        expect(jobs_client).to receive(:create_job)
         subject.before_enqueue_kubernetes_job
       end
 
-      it "applies our label to the job and the pod" do
+      it "labels the job and the pod" do
         manifest = hash_including(
             "metadata" => hash_including(
                 "labels" => hash_including(
@@ -143,6 +161,28 @@ describe Resque::Kubernetes::Job do
                     )
                 )
             )
+        )
+        expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
+        subject.before_enqueue_kubernetes_job
+      end
+
+      it "label the job to group it based on the provided name in the manifest" do
+        manifest = hash_including(
+            "metadata" => hash_including(
+                "labels" => hash_including(
+                    "resque-kubernetes-group" => "thing"
+                )
+            ),
+        )
+        expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
+        subject.before_enqueue_kubernetes_job
+      end
+
+      it "updates the job name to make it unique" do
+        manifest = hash_including(
+            "metadata" => hash_including(
+                "name" => match(/^thing-[a-z0-9]{5}$/)
+            ),
         )
         expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
         subject.before_enqueue_kubernetes_job

@@ -9,12 +9,3 @@ def with_term_on_empty(value)
 ensure
   ENV["TERM_ON_EMPTY"] = old_value
 end
-
-
-def with_environments(environments)
-  old_environments = Resque::Kubernetes.environments
-  Resque::Kubernetes.environments = environments
-  yield
-ensure
-  Resque::Kubernetes.environments = old_environments
-end

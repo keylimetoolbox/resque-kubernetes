@@ -1,3 +1,4 @@
+require "securerandom"
 require "kubeclient"
 
 module Resque
@@ -34,9 +35,6 @@ module Resque
           auth_options = {bearer_token_file: "/var/run/secrets/kubernetes.io/serviceaccount/token"}
           @jobs_client = Kubeclient::Client.new("https://localhost:8443/apis/batch" , "v1", auth_options: auth_options)
         elsif File.exist?(kubeconfig)
-          # TODO: We don't normally want to run this in development, we should add a
-          # configuration option to state which environments it runs in, normally just "production".
-
           # When running in development, use the config file for `kubectl`
           kubeconfig = File.join(ENV["HOME"], ".kube", "config")
           config = Kubeclient::Config.read(kubeconfig)
@@ -73,25 +71,29 @@ module Resque
         manifest = job_manifest.dup
         ensure_namespace(manifest)
 
-        # Do not start job if it is already running
-        return if job_exists?(manifest["metadata"]["name"], manifest["metadata"]["namespace"])
+        # Do not start job if we have reached our maximum count
+        return if jobs_maxed?(manifest["metadata"]["name"], manifest["metadata"]["namespace"])
 
         add_labels(manifest)
         ensure_term_on_empty(manifest)
         ensure_reset_policy(manifest)
+        update_job_name(manifest)
 
         job = Kubeclient::Resource.new(manifest)
         jobs_client.create_job(job)
       end
 
-      def job_exists?(name, namespace)
-        !!jobs_client.get_job(name, namespace) rescue false
+      def jobs_maxed?(name, namespace)
+        resque_jobs = jobs_client.get_jobs(label_selector: "resque-kubernetes=job,resque-kubernetes-group=#{name}", namespace: namespace)
+        running = resque_jobs.select { |job| job.spec.completions != job.status.succeeded }
+        running.size == Resque::Kubernetes.max_workers
       end
 
       def add_labels(manifest)
         manifest["metadata"] ||= {}
         manifest["metadata"]["labels"] ||= {}
         manifest["metadata"]["labels"]["resque-kubernetes"] = "job"
+        manifest["metadata"]["labels"]["resque-kubernetes-group"] = manifest["metadata"]["name"]
         manifest["spec"]["template"]["metadata"] ||= {}
         manifest["spec"]["template"]["metadata"]["labels"] ||= {}
         manifest["spec"]["template"]["metadata"]["labels"]["resque-kubernetes"] = "pod"
@@ -120,6 +122,18 @@ module Resque
         manifest["metadata"]["namespace"] ||= "default"
       end
 
+      def update_job_name(manifest)
+        manifest["metadata"]["name"] += "-#{dns_safe_random}"
+      end
+
+      # Returns an n-length string of characters [a-z0-9]
+      def dns_safe_random(n = 5)
+        s = [SecureRandom.random_bytes(n)].pack("m*")
+        s.delete!("=\n")
+        s.tr!("+/_-", "0")
+        s.tr!("A-Z", "a-z")
+        s[0...n]
+      end
 
     end
   end

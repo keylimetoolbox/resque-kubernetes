@@ -100,6 +100,26 @@ By default `Resque::Kubernetes` will only manage Kubernetes Jobs in
 
 Note that this only works under Rails, when `Rails.env` is set.
 
+### `max_workers`
+
+`Resque::Kubernetes` will spin up a Kuberentes Job each time you enqueue a 
+Resque Job. This allows for parallel processing of jobs using the resources
+available to your cluster. By default this is limited to 10 workers, so an not
+to have run-away cloud resource usage.
+
+You can set this higher if you need massive scaling and your structure supports
+it.
+
+If you don't want more than one job running at a time then set this to 1.
+
+## To Do
+
+- We probably need better namespace support, particularly for reaping 
+  finished jobs and pods.
+- Support for other authentication and server URL options for `kubeclient`.
+  See [the many examples](https://github.com/abonas/kubeclient#usage) in their
+  README.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, 
