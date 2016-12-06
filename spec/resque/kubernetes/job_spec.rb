@@ -50,6 +50,47 @@ describe Resque::Kubernetes::Job do
     let(:done_pod)    { K8sStub.new(status: {phase: "Succeeded"}) }
     let(:working_pod) { K8sStub.new(status: {phase: "Running"}) }
 
+    context "when Rails.env is not defined" do
+      before do
+        expect(defined? Rails).not_to be true
+      end
+
+      it "calls kubernetes APIs" do
+        expect(subject).to receive(:jobs_client).and_return(jobs_client)
+        expect(subject).to receive(:pods_client).and_return(pods_client)
+        subject.before_enqueue_kubernetes_job
+      end
+    end
+
+    context "when Rails.env is defined" do
+      let(:rails_stub) { Class.new }
+
+      before do
+        stub_const("Rails", rails_stub)
+        allow(rails_stub).to receive(:env).and_return("test")
+      end
+
+      context "and is included in the supported environments" do
+        it "calls kubernetes APIs" do
+          with_environments(["test"]) do
+            expect(subject).to receive(:jobs_client).and_return(jobs_client)
+            expect(subject).to receive(:pods_client).and_return(pods_client)
+            subject.before_enqueue_kubernetes_job
+          end
+        end
+      end
+
+      context "and is not included in the supported environments" do
+        it "does not make any kubernetes calls" do
+          with_environments("production") do
+            expect(subject).not_to receive(:jobs_client)
+            expect(subject).not_to receive(:pods_client)
+            subject.before_enqueue_kubernetes_job
+          end
+        end
+      end
+    end
+
     it "reaps any completed jobs matching our label" do
       expect(jobs_client).to receive(:get_jobs).with(label_selector: "resque-kubernetes=job").and_return([working_job, done_job])
       expect(jobs_client).to receive(:delete_job).with(done_job.metadata.name, done_job.metadata.namespace)
@@ -232,6 +273,7 @@ describe Resque::Kubernetes::Job do
       end
 
     end
-
   end
+
+
 end

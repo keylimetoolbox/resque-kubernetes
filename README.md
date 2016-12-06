@@ -78,7 +78,27 @@ resources.
 
 ## Configuration
 
+You can modify the configuration of the gem by creating an initializer in
+your project:
 
+```ruby
+# config/initializers/resque-kubernetes.rb
+
+Resque::Kubernetes.configuration do |config|
+
+ config.environments << "staging"
+
+end
+```
+
+### `environments`
+
+By default `Resque::Kubernetes` will only manage Kubernetes Jobs in
+`:production`. If you want to add other environments you can update this list
+(`config.environments << "staging"`) or replace it (`config.environments =
+["production", "development"]`).
+
+Note that this only works under Rails, when `Rails.env` is set.
 
 ## Development
 

@@ -4,7 +4,11 @@ module Resque
   module Kubernetes
     module Job
 
-      def before_enqueue_kubernetes_job(*_args)
+      def before_enqueue_kubernetes_job(*_)
+        if defined? Rails
+          return unless Resque::Kubernetes.environments.include?(Rails.env)
+        end
+
         reap_finished_jobs
         reap_finished_pods
         apply_kubernetes_job
