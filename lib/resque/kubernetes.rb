@@ -8,7 +8,7 @@ module Resque
     extend Configurable
 
     # By default only manage kubernetes jobs in :production
-    define_setting :environments, [:production]
+    define_setting :environments, ["production"]
 
     # Limit the number of workers that should be spun up, default 10
     define_setting :max_workers, 10
