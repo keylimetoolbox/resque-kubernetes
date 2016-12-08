@@ -29,22 +29,35 @@ module Resque
 
       def client(scope)
         kubeconfig = File.join(ENV["HOME"], ".kube", "config")
+        # TODO: Add ability to load this from config
+        context = nil
 
         if File.exist?("/var/run/secrets/kubernetes.io/serviceaccount/token")
-          # When running in k8s cluster, use the service account secret token
-          auth_options = {bearer_token_file: "/var/run/secrets/kubernetes.io/serviceaccount/token"}
-          @jobs_client = Kubeclient::Client.new("https://localhost:8443/apis/batch" , "v1", auth_options: auth_options)
+          # When running in GKE/k8s cluster, use the service account secret token and ca bundle
+          context = new Kubeclient::Config::Context(
+              "https://kubernetes",
+              "v1",
+              {ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"},
+              {bearer_token_file: "/var/run/secrets/kubernetes.io/serviceaccount/token"}
+          )
         elsif File.exist?(kubeconfig)
-          # When running in development, use the config file for `kubectl`
+          # When running in development, use the config file for `kubectl` and default application credentials
           kubeconfig = File.join(ENV["HOME"], ".kube", "config")
-          config = Kubeclient::Config.read(kubeconfig)
-          Kubeclient::Client.new(
-              config.context.api_endpoint + scope,
+          config     = Kubeclient::Config.read(kubeconfig)
+          context    = Kubeclient::Config::Context.new(
+              config.context.api_endpoint,
               config.context.api_version,
-              {
-                  ssl_options: config.context.ssl_options,
-                  auth_options: {use_default_gcp: true}
-              }
+              config.context.ssl_options,
+              {use_default_gcp: true}
+          )
+        end
+
+        if context
+          Kubeclient::Client.new(
+              context.api_endpoint + scope,
+              context.api_version,
+              ssl_options: context.ssl_options,
+              auth_options: context.auth_options,
           )
         end
       end
