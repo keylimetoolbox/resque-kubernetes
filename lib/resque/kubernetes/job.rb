@@ -34,7 +34,7 @@ module Resque
 
         if File.exist?("/var/run/secrets/kubernetes.io/serviceaccount/token")
           # When running in GKE/k8s cluster, use the service account secret token and ca bundle
-          context = new Kubeclient::Config::Context.new(
+          context = Kubeclient::Config::Context.new(
               "https://kubernetes",
               "v1",
               {ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"},
