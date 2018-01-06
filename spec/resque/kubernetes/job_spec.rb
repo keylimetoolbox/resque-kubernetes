@@ -37,11 +37,9 @@ describe Resque::Kubernetes::Job do
   subject { ThingExtendingJob }
 
   let(:jobs_client) { spy("jobs client") }
-  let(:pods_client) { spy("pods client") }
 
   before do
     allow(subject).to receive(:jobs_client).and_return(jobs_client)
-    allow(subject).to receive(:pods_client).and_return(pods_client)
   end
 
   context "#before_enqueue_kubernetes_job" do
@@ -57,7 +55,6 @@ describe Resque::Kubernetes::Job do
 
       it "calls kubernetes APIs" do
         expect(subject).to receive(:jobs_client).and_return(jobs_client)
-        expect(subject).to receive(:pods_client).and_return(pods_client)
         subject.before_enqueue_kubernetes_job
       end
     end
@@ -77,7 +74,6 @@ describe Resque::Kubernetes::Job do
 
         it "calls kubernetes APIs" do
           expect(subject).to receive(:jobs_client).and_return(jobs_client)
-          expect(subject).to receive(:pods_client).and_return(pods_client)
           subject.before_enqueue_kubernetes_job
         end
       end
@@ -89,7 +85,6 @@ describe Resque::Kubernetes::Job do
 
         it "does not make any kubernetes calls" do
           expect(subject).not_to receive(:jobs_client)
-          expect(subject).not_to receive(:pods_client)
           subject.before_enqueue_kubernetes_job
         end
       end
@@ -98,12 +93,6 @@ describe Resque::Kubernetes::Job do
     it "reaps any completed jobs matching our label" do
       expect(jobs_client).to receive(:get_jobs).with(label_selector: "resque-kubernetes=job").and_return([working_job, done_job])
       expect(jobs_client).to receive(:delete_job).with(done_job.metadata.name, done_job.metadata.namespace)
-      subject.before_enqueue_kubernetes_job
-    end
-
-    it "reaps all completed pods of the jobs matching our label" do
-      expect(pods_client).to receive(:get_pods).with(label_selector: "resque-kubernetes=pod").and_return([working_pod, done_pod])
-      expect(pods_client).to receive(:delete_pod).with(done_pod.metadata.name, done_pod.metadata.namespace)
       subject.before_enqueue_kubernetes_job
     end
 
