@@ -1,10 +1,45 @@
-require "securerandom"
+# frozen_string_literal: true
+
 require "kubeclient"
 
 module Resque
   module Kubernetes
+    # Resque hook to autoscale Kubernetes Jobs for workers.
+    #
+    # To use, extend your Resque job class with this module and then define a
+    # class method `job_manifest` that produces the Kubernetes Job manifest.
+    #
+    # Example:
+    #
+    #     class ResourceIntensiveJob
+    #       extend Resque::Kubernetes::Job
+    #
+    #       def perform
+    #         # ... your existing code
+    #       end
+    #
+    #       def job_manifest
+    #         <<-EOD
+    #     apiVersion: batch/v1
+    #     kind: Job
+    #     metadata:
+    #       name: worker-job
+    #     spec:
+    #       template:
+    #         metadata:
+    #           name: worker-job
+    #         spec:
+    #           containers:
+    #           - name: worker
+    #             image: us.gcr.io/project-id/some-resque-worker
+    #             env:
+    #             - name: QUEUE
+    #               value: high-memory
+    #         EOD
+    #       end
+    #     end
     module Job
-
+      # A before_enqueue hook that adds worker jobs to the cluster.
       def before_enqueue_kubernetes_job(*_)
         if defined? Rails
           return unless Resque::Kubernetes.environments.include?(Rails.env)
@@ -28,45 +63,24 @@ module Resque
       end
 
       def client(scope)
-        kubeconfig = File.join(ENV["HOME"], ".kube", "config")
-        # TODO: Add ability to load this from config
-        context = nil
+        context = ContextFactory.context
+        return unless context
 
-        if File.exist?("/var/run/secrets/kubernetes.io/serviceaccount/token")
-          # When running in GKE/k8s cluster, use the service account secret token and ca bundle
-          context = Kubeclient::Config::Context.new(
-              "https://kubernetes",
-              "v1",
-              {ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"},
-              {bearer_token_file: "/var/run/secrets/kubernetes.io/serviceaccount/token"}
-          )
-        elsif File.exist?(kubeconfig)
-          # When running in development, use the config file for `kubectl` and default application credentials
-          kubeconfig = File.join(ENV["HOME"], ".kube", "config")
-          config     = Kubeclient::Config.read(kubeconfig)
-          context    = Kubeclient::Config::Context.new(
-              config.context.api_endpoint,
-              config.context.api_version,
-              config.context.ssl_options,
-              {use_default_gcp: true}
-          )
-        end
+        Kubeclient::Client.new(
+            context.api_endpoint + scope,
+            context.api_version,
+            ssl_options:  context.ssl_options,
+            auth_options: context.auth_options
+        )
+      end
 
-        if context
-          Kubeclient::Client.new(
-              context.api_endpoint + scope,
-              context.api_version,
-              ssl_options: context.ssl_options,
-              auth_options: context.auth_options,
-          )
-        end
+      def finished_jobs
+        resque_jobs = jobs_client.get_jobs(label_selector: "resque-kubernetes=job")
+        resque_jobs.select { |job| job.spec.completions == job.status.succeeded }
       end
 
       def reap_finished_jobs
-        resque_jobs = jobs_client.get_jobs(label_selector: "resque-kubernetes=job")
-        finished = resque_jobs.select { |job| job.spec.completions == job.status.succeeded }
-
-        finished.each do |job|
+        finished_jobs.each do |job|
           jobs_client.delete_job(job.metadata.name, job.metadata.namespace)
         end
       end
@@ -81,73 +95,69 @@ module Resque
       end
 
       def apply_kubernetes_job
-        manifest = job_manifest.dup
+        manifest = DeepHash.new.merge!(job_manifest)
         ensure_namespace(manifest)
 
         # Do not start job if we have reached our maximum count
         return if jobs_maxed?(manifest["metadata"]["name"], manifest["metadata"]["namespace"])
 
-        add_labels(manifest)
-        ensure_term_on_empty(manifest)
-        ensure_reset_policy(manifest)
-        update_job_name(manifest)
+        adjust_manifest(manifest)
 
         job = Kubeclient::Resource.new(manifest)
         jobs_client.create_job(job)
       end
 
       def jobs_maxed?(name, namespace)
-        resque_jobs = jobs_client.get_jobs(label_selector: "resque-kubernetes=job,resque-kubernetes-group=#{name}", namespace: namespace)
-        running = resque_jobs.select { |job| job.spec.completions != job.status.succeeded }
+        resque_jobs = jobs_client.get_jobs(
+            label_selector: "resque-kubernetes=job,resque-kubernetes-group=#{name}",
+            namespace:      namespace
+        )
+        running = resque_jobs.reject { |job| job.spec.completions == job.status.succeeded }
         running.size == Resque::Kubernetes.max_workers
       end
 
+      def adjust_manifest(manifest)
+        add_labels(manifest)
+        ensure_term_on_empty(manifest)
+        ensure_reset_policy(manifest)
+        update_job_name(manifest)
+      end
+
       def add_labels(manifest)
-        manifest["metadata"] ||= {}
-        manifest["metadata"]["labels"] ||= {}
-        manifest["metadata"]["labels"]["resque-kubernetes"] = "job"
+        manifest.deep_add(%w[metadata labels resque-kubernetes], "job")
         manifest["metadata"]["labels"]["resque-kubernetes-group"] = manifest["metadata"]["name"]
-        manifest["spec"]["template"]["metadata"] ||= {}
-        manifest["spec"]["template"]["metadata"]["labels"] ||= {}
-        manifest["spec"]["template"]["metadata"]["labels"]["resque-kubernetes"] = "pod"
+        manifest.deep_add(%w[spec template metadata labels resque-kubernetes], "pod")
       end
 
       def ensure_term_on_empty(manifest)
         manifest["spec"]["template"]["spec"] ||= {}
         manifest["spec"]["template"]["spec"]["containers"] ||= []
         manifest["spec"]["template"]["spec"]["containers"].each do |container|
-          container["env"] ||= []
-          term_on_empty = container["env"].find { |env| env["name"] == "TERM_ON_EMPTY" }
-          unless term_on_empty
-            term_on_empty = {"name" => "TERM_ON_EMPTY"}
-            container["env"] << term_on_empty
-          end
-          term_on_empty["value"] = "1"
+          container_term_on_empty(container)
         end
+      end
+
+      def container_term_on_empty(container)
+        container["env"] ||= []
+        term_on_empty = container["env"].find { |env| env["name"] == "TERM_ON_EMPTY" }
+        unless term_on_empty
+          term_on_empty = {"name" => "TERM_ON_EMPTY"}
+          container["env"] << term_on_empty
+        end
+        term_on_empty["value"] = "1"
       end
 
       def ensure_reset_policy(manifest)
         manifest["spec"]["template"]["spec"]["restartPolicy"] ||= "OnFailure"
       end
 
-
       def ensure_namespace(manifest)
         manifest["metadata"]["namespace"] ||= "default"
       end
 
       def update_job_name(manifest)
-        manifest["metadata"]["name"] += "-#{dns_safe_random}"
+        manifest["metadata"]["name"] += "-#{DNSSafeRandom.random_chars}"
       end
-
-      # Returns an n-length string of characters [a-z0-9]
-      def dns_safe_random(n = 5)
-        s = [SecureRandom.random_bytes(n)].pack("m*")
-        s.delete!("=\n")
-        s.tr!("+/_-", "0")
-        s.tr!("A-Z", "a-z")
-        s[0...n]
-      end
-
     end
   end
 end

@@ -1,11 +1,17 @@
+# frozen_string_literal: true
+
 module Resque
   module Kubernetes
+    # Provides configuration settings, with default values, for the gem.
     module Configurable
-
       def configuration
         yield self
       end
 
+      # Define a configuration setting and its default value.
+      #
+      # name:    The name of the setting.
+      # default: A default value for the setting. (Optional)
       def define_setting(name, default = nil)
         class_variable_set("@@#{name}", default)
 
@@ -14,7 +20,7 @@ module Resque
         end
 
         define_class_method name do
-         class_variable_get("@@#{name}")
+          class_variable_get("@@#{name}")
         end
       end
 
@@ -25,8 +31,6 @@ module Resque
           define_method(name, &block)
         end
       end
-
-
-     end
+    end
   end
 end

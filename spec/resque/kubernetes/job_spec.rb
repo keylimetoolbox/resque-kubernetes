@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 
 describe Resque::Kubernetes::Job do
@@ -5,13 +7,13 @@ describe Resque::Kubernetes::Job do
     extend Resque::Kubernetes::Job
 
     def self.job_manifest
-      self.default_manifest
+      default_manifest
     end
 
     def self.default_manifest
       {
           "metadata" => {"name" => "thing"},
-          "spec" => {
+          "spec"     => {
               "template" => {
                   "spec" => {"containers" => [{}]}
               }
@@ -96,13 +98,15 @@ describe Resque::Kubernetes::Job do
     end
 
     it "reaps any completed jobs matching our label" do
-      expect(jobs_client).to receive(:get_jobs).with(label_selector: "resque-kubernetes=job").and_return([working_job, done_job])
+      jobs = [working_job, done_job]
+      expect(jobs_client).to receive(:get_jobs).with(label_selector: "resque-kubernetes=job").and_return(jobs)
       expect(jobs_client).to receive(:delete_job).with(done_job.metadata.name, done_job.metadata.namespace)
       subject.before_enqueue_kubernetes_job
     end
 
     it "reaps all completed pods of the jobs matching our label" do
-      expect(pods_client).to receive(:get_pods).with(label_selector: "resque-kubernetes=pod").and_return([working_pod, done_pod])
+      jobs = [working_pod, done_pod]
+      expect(pods_client).to receive(:get_pods).with(label_selector: "resque-kubernetes=pod").and_return(jobs)
       expect(pods_client).to receive(:delete_pod).with(done_pod.metadata.name, done_pod.metadata.namespace)
       subject.before_enqueue_kubernetes_job
     end
@@ -152,7 +156,7 @@ describe Resque::Kubernetes::Job do
                     "resque-kubernetes" => "job"
                 )
             ),
-            "spec" => hash_including(
+            "spec"     => hash_including(
                 "template" => hash_including(
                     "metadata" => hash_including(
                         "labels" => hash_including(
@@ -172,7 +176,7 @@ describe Resque::Kubernetes::Job do
                 "labels" => hash_including(
                     "resque-kubernetes-group" => "thing"
                 )
-            ),
+            )
         )
         expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
         subject.before_enqueue_kubernetes_job
@@ -182,7 +186,7 @@ describe Resque::Kubernetes::Job do
         manifest = hash_including(
             "metadata" => hash_including(
                 "name" => match(/^thing-[a-z0-9]{5}$/)
-            ),
+            )
         )
         expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
         subject.before_enqueue_kubernetes_job
@@ -191,9 +195,7 @@ describe Resque::Kubernetes::Job do
       context "when the restart policy is included" do
         before do
           manifest = subject.default_manifest.dup
-          manifest["spec"]["template"]["spec"].merge!(
-              "restartPolicy" => "Always"
-          )
+          manifest["spec"]["template"]["spec"]["restartPolicy"] = "Always"
           allow(subject).to receive(:job_manifest).and_return(manifest)
         end
 
@@ -231,11 +233,9 @@ describe Resque::Kubernetes::Job do
       context "when TERM_ON_EMPTY environment is included" do
         before do
           manifest = subject.default_manifest.dup
-          manifest["spec"]["template"]["spec"]["containers"][0].merge!(
-              "env" => [
-                  {"name" => "TERM_ON_EMPTY", "value" => "true"}
-              ]
-          )
+          manifest["spec"]["template"]["spec"]["containers"][0]["env"] = [
+              {"name" => "TERM_ON_EMPTY", "value" => "true"}
+          ]
           allow(subject).to receive(:job_manifest).and_return(manifest)
         end
 
@@ -314,6 +314,5 @@ describe Resque::Kubernetes::Job do
 
     end
   end
-
 
 end

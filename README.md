@@ -51,6 +51,8 @@ class ResourceIntensiveJob
   
   def job_manifest
     <<-EOD
+apiVersion: batch/v1
+kind: Job
 metadata:
   name: worker-job
 spec:
