@@ -99,207 +99,228 @@ describe Resque::Kubernetes::Job do
       subject.before_enqueue_kubernetes_job
     end
 
-    context "when the maximum number of matching, working jobs is met" do
-      before do
-        allow(Resque::Kubernetes).to receive(:max_workers).and_return(1)
-        allow(jobs_client).to receive(:get_jobs).and_return([working_job])
+    shared_examples "max workers" do
+      context "when the maximum number of matching, working jobs is met" do
+        let(:workers) { 1 }
+
+        before do
+          allow(jobs_client).to receive(:get_jobs).and_return([working_job])
+        end
+
+        it "does not try to create a new job" do
+          expect(Kubeclient::Resource).not_to receive(:new)
+          subject.before_enqueue_kubernetes_job
+        end
       end
 
-      it "does not try to create a new job" do
-        expect(Kubeclient::Resource).not_to receive(:new)
-        subject.before_enqueue_kubernetes_job
-      end
-    end
+      context "when matching, completed jobs exist" do
+        let(:workers) { 2 }
 
-    context "when matching, completed jobs exist" do
-      before do
-        allow(Resque::Kubernetes).to receive(:max_workers).and_return(2)
-        allow(jobs_client).to receive(:get_jobs).and_return([done_job, working_job])
-      end
+        before do
+          allow(jobs_client).to receive(:get_jobs).and_return([done_job, working_job])
+        end
 
-      it "creates a new job using the provided job manifest" do
-        expect(jobs_client).to receive(:create_job)
-        subject.before_enqueue_kubernetes_job
-      end
-    end
-
-    context "when more job workers can be launched" do
-      let(:job) { double("job") }
-
-      before do
-        allow(Resque::Kubernetes).to receive(:max_workers).and_return(10)
-        allow(jobs_client).to receive(:get_jobs).and_return([])
-        allow(Kubeclient::Resource).to receive(:new).and_return(job)
+        it "creates a new job using the provided job manifest" do
+          expect(jobs_client).to receive(:create_job)
+          subject.before_enqueue_kubernetes_job
+        end
       end
 
-      it "creates a new job using the provided job manifest" do
-        expect(jobs_client).to receive(:create_job)
-        subject.before_enqueue_kubernetes_job
-      end
+      context "when more job workers can be launched" do
+        let(:job) { double("job") }
+        let(:workers) { 10 }
 
-      it "labels the job and the pod" do
-        manifest = hash_including(
-            "metadata" => hash_including(
-                "labels" => hash_including(
-                    "resque-kubernetes" => "job"
-                )
-            ),
-            "spec"     => hash_including(
-                "template" => hash_including(
-                    "metadata" => hash_including(
-                        "labels" => hash_including(
-                            "resque-kubernetes" => "pod"
+        before do
+          allow(jobs_client).to receive(:get_jobs).and_return([])
+          allow(Kubeclient::Resource).to receive(:new).and_return(job)
+        end
+
+        it "creates a new job using the provided job manifest" do
+          expect(jobs_client).to receive(:create_job)
+          subject.before_enqueue_kubernetes_job
+        end
+
+        it "labels the job and the pod" do
+          manifest = hash_including(
+              "metadata" => hash_including(
+                  "labels" => hash_including(
+                      "resque-kubernetes" => "job"
+                  )
+              ),
+              "spec"     => hash_including(
+                  "template" => hash_including(
+                      "metadata" => hash_including(
+                          "labels" => hash_including(
+                              "resque-kubernetes" => "pod"
+                          )
+                      )
+                  )
+              )
+          )
+          expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
+          subject.before_enqueue_kubernetes_job
+        end
+
+        it "label the job to group it based on the provided name in the manifest" do
+          manifest = hash_including(
+              "metadata" => hash_including(
+                  "labels" => hash_including(
+                      "resque-kubernetes-group" => "thing"
+                  )
+              )
+          )
+          expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
+          subject.before_enqueue_kubernetes_job
+        end
+
+        it "updates the job name to make it unique" do
+          manifest = hash_including(
+              "metadata" => hash_including(
+                  "name" => match(/^thing-[a-z0-9]{5}$/)
+              )
+          )
+          expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
+          subject.before_enqueue_kubernetes_job
+        end
+
+        context "when the restart policy is included" do
+          before do
+            manifest = subject.default_manifest.dup
+            manifest["spec"]["template"]["spec"]["restartPolicy"] = "Always"
+            allow(subject).to receive(:job_manifest).and_return(manifest)
+          end
+
+          it "retains it" do
+            manifest = hash_including(
+                "spec" => hash_including(
+                    "template" => hash_including(
+                        "spec" => hash_including(
+                            "restartPolicy" => "Always"
                         )
                     )
                 )
             )
-        )
-        expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
-        subject.before_enqueue_kubernetes_job
-      end
+            expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
+            subject.before_enqueue_kubernetes_job
+          end
+        end
 
-      it "label the job to group it based on the provided name in the manifest" do
-        manifest = hash_including(
-            "metadata" => hash_including(
-                "labels" => hash_including(
-                    "resque-kubernetes-group" => "thing"
+        context "when the restart policy is not set" do
+          it "ensures it is set to OnFailure" do
+            manifest = hash_including(
+                "spec" => hash_including(
+                    "template" => hash_including(
+                        "spec" => hash_including(
+                            "restartPolicy" => "OnFailure"
+                        )
+                    )
                 )
             )
-        )
-        expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
-        subject.before_enqueue_kubernetes_job
-      end
+            expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
+            subject.before_enqueue_kubernetes_job
+          end
+        end
 
-      it "updates the job name to make it unique" do
-        manifest = hash_including(
-            "metadata" => hash_including(
-                "name" => match(/^thing-[a-z0-9]{5}$/)
+        context "when TERM_ON_EMPTY environment is included" do
+          before do
+            manifest = subject.default_manifest.dup
+            manifest["spec"]["template"]["spec"]["containers"][0]["env"] = [
+                {"name" => "TERM_ON_EMPTY", "value" => "true"}
+            ]
+            allow(subject).to receive(:job_manifest).and_return(manifest)
+          end
+
+          it "ensures it is set to 1" do
+            manifest = hash_including(
+                "spec" => hash_including(
+                    "template" => hash_including(
+                        "spec" => hash_including(
+                            "containers" => array_including(
+                                hash_including(
+                                    "env" => array_including(
+                                        hash_including("name" => "TERM_ON_EMPTY", "value" => "1")
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
             )
-        )
-        expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
-        subject.before_enqueue_kubernetes_job
+            expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
+            subject.before_enqueue_kubernetes_job
+          end
+        end
+
+        context "when TERM_ON_EMPTY environment is not set" do
+          it "ensures it is set to 1" do
+            manifest = hash_including(
+                "spec" => hash_including(
+                    "template" => hash_including(
+                        "spec" => hash_including(
+                            "containers" => array_including(
+                                hash_including(
+                                    "env" => array_including(
+                                        hash_including("name" => "TERM_ON_EMPTY", "value" => "1")
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+            expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
+            subject.before_enqueue_kubernetes_job
+          end
+        end
+
+        context "when the namespace is not included" do
+          it "sets it to 'default'" do
+            manifest = hash_including(
+                "metadata" => hash_including(
+                    "namespace" => "default"
+                )
+            )
+            expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
+            subject.before_enqueue_kubernetes_job
+          end
+        end
+
+        context "when the namespace is set" do
+          before do
+            manifest = subject.default_manifest.dup
+            manifest["metadata"]["namespace"] = "staging"
+            allow(subject).to receive(:job_manifest).and_return(manifest)
+          end
+
+          it "retains it" do
+            manifest = hash_including(
+                "metadata" => hash_including(
+                    "namespace" => "staging"
+                )
+            )
+            expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
+            subject.before_enqueue_kubernetes_job
+          end
+        end
+
+      end
+    end
+
+    context "for the gem-global max_workers setting" do
+      before do
+        allow(Resque::Kubernetes).to receive(:max_workers).and_return(workers)
       end
 
-      context "when the restart policy is included" do
-        before do
-          manifest = subject.default_manifest.dup
-          manifest["spec"]["template"]["spec"]["restartPolicy"] = "Always"
-          allow(subject).to receive(:job_manifest).and_return(manifest)
-        end
+      include_examples "max workers"
+    end
 
-        it "retains it" do
-          manifest = hash_including(
-              "spec" => hash_including(
-                  "template" => hash_including(
-                      "spec" => hash_including(
-                          "restartPolicy" => "Always"
-                      )
-                  )
-              )
-          )
-          expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
-          subject.before_enqueue_kubernetes_job
-        end
+    context "for the job-specific max_workers setting" do
+      before do
+        allow(Resque::Kubernetes).to receive(:max_workers).and_return(0)
+        allow(subject).to receive(:max_workers).and_return(workers)
       end
 
-      context "when the restart policy is not set" do
-        it "ensures it is set to OnFailure" do
-          manifest = hash_including(
-              "spec" => hash_including(
-                  "template" => hash_including(
-                      "spec" => hash_including(
-                          "restartPolicy" => "OnFailure"
-                      )
-                  )
-              )
-          )
-          expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
-          subject.before_enqueue_kubernetes_job
-        end
-      end
-
-      context "when TERM_ON_EMPTY environment is included" do
-        before do
-          manifest = subject.default_manifest.dup
-          manifest["spec"]["template"]["spec"]["containers"][0]["env"] = [
-              {"name" => "TERM_ON_EMPTY", "value" => "true"}
-          ]
-          allow(subject).to receive(:job_manifest).and_return(manifest)
-        end
-
-        it "ensures it is set to 1" do
-          manifest = hash_including(
-              "spec" => hash_including(
-                  "template" => hash_including(
-                      "spec" => hash_including(
-                          "containers" => array_including(
-                              hash_including(
-                                  "env" => array_including(
-                                      hash_including("name" => "TERM_ON_EMPTY", "value" => "1")
-                                  )
-                              )
-                          )
-                      )
-                  )
-              )
-          )
-          expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
-          subject.before_enqueue_kubernetes_job
-        end
-      end
-
-      context "when TERM_ON_EMPTY environment is not set" do
-        it "ensures it is set to 1" do
-          manifest = hash_including(
-              "spec" => hash_including(
-                  "template" => hash_including(
-                      "spec" => hash_including(
-                          "containers" => array_including(
-                              hash_including(
-                                  "env" => array_including(
-                                      hash_including("name" => "TERM_ON_EMPTY", "value" => "1")
-                                  )
-                              )
-                          )
-                      )
-                  )
-              )
-          )
-          expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
-          subject.before_enqueue_kubernetes_job
-        end
-      end
-
-      context "when the namespace is not included" do
-        it "sets it to 'default'" do
-          manifest = hash_including(
-              "metadata" => hash_including(
-                  "namespace" => "default"
-              )
-          )
-          expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
-          subject.before_enqueue_kubernetes_job
-        end
-      end
-
-      context "when the namespace is set" do
-        before do
-          manifest = subject.default_manifest.dup
-          manifest["metadata"]["namespace"] = "staging"
-          allow(subject).to receive(:job_manifest).and_return(manifest)
-        end
-
-        it "retains it" do
-          manifest = hash_including(
-              "metadata" => hash_including(
-                  "namespace" => "staging"
-              )
-          )
-          expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
-          subject.before_enqueue_kubernetes_job
-        end
-      end
-
+      include_examples "max workers"
     end
   end
 
