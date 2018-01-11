@@ -1,0 +1,48 @@
+Documentation:
+  Exclude:
+    - "**/railtie.rb"
+    - "spec/**/*"
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+Metrics/LineLength:
+  Max: 120
+Layout/AlignHash:
+  EnforcedHashRocketStyle: table
+  EnforcedColonStyle: table
+Layout/SpaceInsideHashLiteralBraces:
+  EnforcedStyle: no_space
+Style/RaiseArgs:
+  EnforcedStyle: compact
+Style/EmptyMethod:
+  EnforcedStyle: expanded
+Layout/IndentArray:
+  IndentationWidth: 4
+Layout/IndentHash:
+  IndentationWidth: 4
+Style/ConditionalAssignment:
+  EnforcedStyle: assign_inside_condition
+Layout/FirstParameterIndentation:
+  IndentationWidth: 4
+Layout/MultilineOperationIndentation:
+  IndentationWidth: 4
+  EnforcedStyle: indented
+Style/FormatStringToken:
+  EnforcedStyle: template
+Style/AsciiComments:
+  Enabled: false
+
+Metrics/BlockLength:
+  Exclude:
+    - "keylime-service-api.gemspec"
+    - "spec/**/*"
+
+Layout/EmptyLinesAroundBlockBody:
+  Exclude:
+    - "spec/**/*"
+
+Lint/UselessSetterCall:
+  Exclude:
+    # Rubocop is incorrectly flagging `term_on_empty` as local
+    # See: https://github.com/bbatsov/rubocop/issues/5420
+    - lib/resque/kubernetes/job.rb
