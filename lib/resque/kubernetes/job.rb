@@ -11,7 +11,6 @@ module Resque
         end
 
         reap_finished_jobs
-        reap_finished_pods
         apply_kubernetes_job
       end
 
@@ -20,11 +19,6 @@ module Resque
       def jobs_client
         return @jobs_client if @jobs_client
         @jobs_client = client("/apis/batch")
-      end
-
-      def pods_client
-        return @pods_client if @pods_client
-        @pods_client = client("")
       end
 
       def client(scope)
@@ -68,15 +62,6 @@ module Resque
 
         finished.each do |job|
           jobs_client.delete_job(job.metadata.name, job.metadata.namespace)
-        end
-      end
-
-      def reap_finished_pods
-        resque_jobs = pods_client.get_pods(label_selector: "resque-kubernetes=pod")
-        finished = resque_jobs.select { |pod| pod.status.phase == "Succeeded" }
-
-        finished.each do |pod|
-          pods_client.delete_pod(pod.metadata.name, pod.metadata.namespace)
         end
       end
 
