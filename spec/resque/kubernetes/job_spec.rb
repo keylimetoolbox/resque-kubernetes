@@ -99,6 +99,19 @@ describe Resque::Kubernetes::Job do
       subject.before_enqueue_kubernetes_job
     end
 
+    context "when a job is deleted while reaping completed jobs" do
+      let(:error) { KubeException.new(404, 'job "thing" not found', spy("response")) }
+
+      before do
+        allow(jobs_client).to receive(:get_jobs).and_return([working_job, done_job])
+        allow(jobs_client).to receive(:delete_job).and_raise(error)
+      end
+
+      it "gracefully continues" do
+        expect { subject.before_enqueue_kubernetes_job }.not_to raise_error
+      end
+    end
+
     context "when the maximum number of matching, working jobs is met" do
       before do
         allow(Resque::Kubernetes).to receive(:max_workers).and_return(1)

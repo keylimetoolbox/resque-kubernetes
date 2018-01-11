@@ -75,7 +75,11 @@ module Resque
 
       def reap_finished_jobs
         finished_jobs.each do |job|
-          jobs_client.delete_job(job.metadata.name, job.metadata.namespace)
+          begin
+            jobs_client.delete_job(job.metadata.name, job.metadata.namespace)
+          rescue KubeException => e
+            raise unless e.error_code == 404
+          end
         end
       end
 
