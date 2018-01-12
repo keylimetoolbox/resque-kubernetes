@@ -115,6 +115,30 @@ it.
 
 If you don't want more than one job running at a time then set this to 1.
 
+Beyond this global scope you can adjust the total number of workers on each
+individual Resque Job type by overriding the `max_workers` class method for the job.
+If you change this, the value returned by that method takes precedence over the
+global value.
+
+```ruby
+class ResourceIntensiveJob
+  extend Resque::Kubernetes::Job
+
+  def perform
+    # ...
+  end
+
+  def job_manifest
+    # ...
+  end
+
+  def max_workers
+    # Simply return an integer value, or do something more complicated if needed.
+    105
+  end
+end
+```
+
 ## To Do
 
 - We probably need better namespace support, particularly for reaping 
