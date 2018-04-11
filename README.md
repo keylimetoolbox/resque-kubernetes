@@ -38,35 +38,36 @@ Or install it yourself as:
 For any Resque job that you want to run in a Kubernetes job, you'll need to
 modify the job class with two things:
 
-- extend the class with `Resque::Kubernetes::Job`
-- and add a method `job_manifest` that returns the Kubernetes manifest for the job
+- `extend` the class with `Resque::Kubernetes::Job`
+- add a class method `job_manifest` that returns the Kubernetes manifest for the job
 
 ```ruby
 class ResourceIntensiveJob
   extend Resque::Kubernetes::Job
-  
-  def perform
-    # ... your existing code
-  end
-  
-  def job_manifest
-    <<-EOD
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: worker-job
-spec:
-  template:
-    metadata:
-      name: worker-job
-    spec:
-      containers:
-      - name: worker
-        image: us.gcr.io/project-id/some-resque-worker
-        env:
-        - name: QUEUE
-          value: high-memory
-    EOD
+  class << self
+    def perform
+      # ... your existing code
+    end
+
+    def job_manifest
+      <<~MANIFEST
+        apiVersion: batch/v1
+        kind: Job
+        metadata:
+          name: worker-job
+        spec:
+          template:
+            metadata:
+              name: worker-job
+            spec:
+              containers:
+              - name: worker
+                image: us.gcr.io/project-id/some-resque-worker
+                env:
+                - name: QUEUE
+                  value: high-memory
+      MANIFEST
+    end
   end
 end
 ```
@@ -124,17 +125,19 @@ global value.
 class ResourceIntensiveJob
   extend Resque::Kubernetes::Job
 
-  def perform
-    # ...
-  end
+  class << self
+    def perform
+      # ...
+    end
 
-  def job_manifest
-    # ...
-  end
+    def job_manifest
+      # ...
+    end
 
-  def max_workers
-    # Simply return an integer value, or do something more complicated if needed.
-    105
+    def max_workers
+      # Simply return an integer value, or do something more complicated if needed.
+      105
+    end
   end
 end
 ```
