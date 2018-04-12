@@ -40,6 +40,12 @@ module Resque
     #       end
     #     end
     module Job
+
+      def self.included(base)
+        return unless base.respond_to?(:before_enqueue)
+        base.before_enqueue :before_enqueue_kubernetes_job
+      end
+
       # A before_enqueue hook that adds worker jobs to the cluster.
       def before_enqueue_kubernetes_job(*_)
         if defined? Rails
