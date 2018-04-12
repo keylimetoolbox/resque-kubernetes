@@ -46,6 +46,7 @@ to modify the class with two things:
 
 - `extend` the class with `Resque::Kubernetes::Job`
 - add a class method `job_manifest` that returns the Kubernetes manifest for the job
+  as a `Hash`
 
 ```ruby
 class ResourceIntensiveJob
@@ -56,6 +57,48 @@ class ResourceIntensiveJob
     end
 
     def job_manifest
+      YAML.load(
+        <<~MANIFEST
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: worker-job
+          spec:
+            template:
+              metadata:
+                name: worker-job
+              spec:
+                containers:
+                - name: worker
+                  image: us.gcr.io/project-id/some-resque-worker
+                  env:
+                  - name: QUEUE
+                    value: high-memory
+        MANIFEST
+      )
+    end
+  end
+end
+```
+
+### ActiveJob (on Resque)
+
+For any ActiveJob that you want to run in a Kubernetes job, you'll need to
+modify the class with two things:
+
+- `include` `Resque::Kubernetes::Job` in the class
+- add an instance method `job_manifest` that returns the Kubernetes manifest for the job
+  as a `Hash`
+
+```ruby
+class ResourceIntensiveJob < ApplicationJob
+  include Resque::Kubernetes::Job
+  def perform
+    # ... your existing code
+  end
+
+  def job_manifest
+    YAML.load(
       <<~MANIFEST
         apiVersion: batch/v1
         kind: Job
@@ -73,44 +116,7 @@ class ResourceIntensiveJob
                 - name: QUEUE
                   value: high-memory
       MANIFEST
-    end
-  end
-end
-```
-
-### ActiveJob (on Resque)
-
-For any ActiveJob that you want to run in a Kubernetes job, you'll need to
-modify the class with two things:
-
-- `include` `Resque::Kubernetes::Job` in the class
-- add an instance method `job_manifest` that returns the Kubernetes manifest for the job
-
-```ruby
-class ResourceIntensiveJob < ApplicationJob
-  include Resque::Kubernetes::Job
-  def perform
-    # ... your existing code
-  end
-
-  def job_manifest
-    <<~MANIFEST
-      apiVersion: batch/v1
-      kind: Job
-      metadata:
-        name: worker-job
-      spec:
-        template:
-          metadata:
-            name: worker-job
-          spec:
-            containers:
-            - name: worker
-              image: us.gcr.io/project-id/some-resque-worker
-              env:
-              - name: QUEUE
-                value: high-memory
-    MANIFEST
+    )
   end
 end
 ```
@@ -126,10 +132,10 @@ resources.
 
 ### Job manifest
 
-In the example above we returned the manifest as a string, just to make it
-simple. But you could also read this from a file or anything else you 
-want to do in the method, as long as you return a valid Kubernetes Job 
-manifest. 
+In the example above we show the manifest as a HEREDOC, just to make it
+simple. But you could also read this from a file, parse a template and insert
+values, or anything else you want to do in the method, as long as you return
+a valid Kubernetes Job manifest as a `Hash`.
 
 ## Configuration
 
@@ -140,10 +146,8 @@ your project:
 # config/initializers/resque-kubernetes.rb
 
 Resque::Kubernetes.configuration do |config|
-
  config.environments << "staging"
  config.max_workers = 10
-
 end
 ```
 
