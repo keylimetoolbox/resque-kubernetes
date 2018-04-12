@@ -32,16 +32,37 @@ module Resque
 
         def kubectl_context
           config = Kubeclient::Config.read(kubeconfig)
+          auth_options = config.context.auth_options
+
+          auth_options = google_default_application_credentials(config) if auth_options.empty?
+
           Kubeclient::Config::Context.new(
               config.context.api_endpoint,
               config.context.api_version,
               config.context.ssl_options,
-              use_default_gcp: true
+              auth_options
           )
         end
 
         def kubeconfig
           File.join(ENV["HOME"], ".kube", "config")
+        end
+
+        # TODO: Move this logic to kubeclient. See abonas/kubeclient#213
+        def google_default_application_credentials(config)
+          return unless defined?(Google) && defined?(Google::Auth)
+
+          _cluster, user = config.send(:fetch_context, config.instance_variable_get(:@kcfg)["current-context"])
+          return {} unless user["auth-provider"] && user["auth-provider"]["name"] == "gcp"
+
+          {bearer_token: new_google_token}
+        end
+
+        def new_google_token
+          scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+          authorization = Google::Auth.get_application_default(scopes)
+          authorization.apply({})
+          authorization.access_token
         end
       end
     end
