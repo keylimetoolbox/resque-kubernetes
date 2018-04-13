@@ -24,7 +24,7 @@ module Resque
     #         end
     #
     #         def job_manifest
-    #           YAML.load(
+    #           YAML.safe_load(
     #             <<~MANIFEST
     #             apiVersion: batch/v1
     #               kind: Job
@@ -56,7 +56,7 @@ module Resque
     #       end
     #
     #       def job_manifest
-    #         YAML.load(
+    #         YAML.safe_load(
     #           <<~MANIFEST
     #           apiVersion: batch/v1
     #             kind: Job

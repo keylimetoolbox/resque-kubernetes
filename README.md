@@ -57,7 +57,7 @@ class ResourceIntensiveJob
     end
 
     def job_manifest
-      YAML.load(
+      YAML.safe_load(
         <<~MANIFEST
           apiVersion: batch/v1
           kind: Job
@@ -98,7 +98,7 @@ class ResourceIntensiveJob < ApplicationJob
   end
 
   def job_manifest
-    YAML.load(
+    YAML.safe_load(
       <<~MANIFEST
         apiVersion: batch/v1
         kind: Job
