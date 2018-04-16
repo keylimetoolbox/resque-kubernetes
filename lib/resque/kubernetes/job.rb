@@ -6,10 +6,15 @@ module Resque
   module Kubernetes
     # Resque hook to autoscale Kubernetes Jobs for workers.
     #
-    # To use, extend your Resque job class with this module and then define a
-    # class method `job_manifest` that produces the Kubernetes Job manifest.
+    # To use with pure Resque, extend your Resque job class with this module
+    # and then define a class method `job_manifest` that produces the
+    # Kubernetes Job manifest.
     #
-    # Example:
+    # To use with ActiveJob, include this module in your ActiveJob class
+    # and then define an instance method `job_manifest` that produces the
+    # Kubernetes Job manifest.
+    #
+    # Example (pure Resque):
     #
     #     class ResourceIntensiveJob
     #       extend Resque::Kubernetes::Job
@@ -19,27 +24,65 @@ module Resque
     #         end
     #
     #         def job_manifest
-    #           <<~MANIFEST
-    #           apiVersion: batch/v1
-    #             kind: Job
-    #             metadata:
-    #               name: worker-job
-    #            spec:
-    #               template:
-    #                 metadata:
-    #                   name: worker-job
-    #                 spec:
-    #                   containers:
-    #                   - name: worker
-    #                     image: us.gcr.io/project-id/some-resque-worker
-    #                     env:
-    #                     - name: QUEUE
-    #                       value: high-memory
-    #           MANIFEST
+    #           YAML.safe_load(
+    #             <<~MANIFEST
+    #             apiVersion: batch/v1
+    #               kind: Job
+    #               metadata:
+    #                 name: worker-job
+    #               spec:
+    #                 template:
+    #                   metadata:
+    #                     name: worker-job
+    #                   spec:
+    #                     containers:
+    #                     - name: worker
+    #                       image: us.gcr.io/project-id/some-resque-worker
+    #                       env:
+    #                       - name: QUEUE
+    #                         value: high-memory
+    #             MANIFEST
+    #           )
     #         end
     #       end
     #     end
+    #
+    # Example (ActiveJob backed by Resque):
+    #
+    #     class ResourceIntensiveJob < ApplicationJob
+    #       include Resque::Kubernetes::Job
+    #       def perform
+    #         # ... your existing code
+    #       end
+    #
+    #       def job_manifest
+    #         YAML.safe_load(
+    #           <<~MANIFEST
+    #           apiVersion: batch/v1
+    #             kind: Job
+    #              metadata:
+    #                name: worker-job
+    #              spec:
+    #                template:
+    #                  metadata:
+    #                    name: worker-job
+    #                  spec:
+    #                    containers:
+    #                    - name: worker
+    #                      image: us.gcr.io/project-id/some-resque-worker
+    #                      env:
+    #                      - name: QUEUE
+    #                        value: high-memory
+    #           MANIFEST
+    #         )
+    #       end
+    #     end
     module Job
+      def self.included(base)
+        return unless base.respond_to?(:before_enqueue)
+        base.before_enqueue :before_enqueue_kubernetes_job
+      end
+
       # A before_enqueue hook that adds worker jobs to the cluster.
       def before_enqueue_kubernetes_job(*_)
         if defined? Rails

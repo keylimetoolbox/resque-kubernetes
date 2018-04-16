@@ -1,28 +1,28 @@
 # Resque::Kubernetes
 
-Run Resque Jobs as Kubernetes Jobs!
+Run Resque (and ActiveJob) Workers as Kubernetes Jobs!
 
 Kubernetes has a concept of "Job" which is a pod that runs a container until
 the container finishes and then it terminates the pod (as opposed to trying to
 restart the container).
 
-This gem takes advantage of that feature by starting up a Kubernetes Job when 
-a Resque Job is enqueued. It then allows the Resque Worker to be modified to 
-terminate when there are no more jobs in the queue.
+This gem takes advantage of that feature by starting up a Kubernetes Job to
+run a worker when a Resque job or ActiveJob is enqueued. It then allows the
+Resque worker to be modified to terminate when there are no more jobs in the queue.
 
 Why would you do this?
 
 We have unpredictable, resource-intensive jobs. Rather than dedicating large 
 nodes in our cluster to run the resque workers, where the resources would be 
 idle when there are no jobs to run, we can use auto-scaling to add nodes when
-Kubernetes Job gets created and shut them down when those jobs are complete. 
+a Kubernetes Job gets created and shut them down when those jobs are complete. 
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'resque-kubernetes'
+gem "resque-kubernetes"
 ```
 
 And then execute:
@@ -35,11 +35,18 @@ Or install it yourself as:
 
 ## Usage
 
-For any Resque job that you want to run in a Kubernetes job, you'll need to
-modify the job class with two things:
+This works with native/pure Resque jobs and with ActiveJob _backed by Resque_.
+Under ActiveJob, the workers are still Resque workers, so the same set up 
+applies. You just configure the job class differently.
+
+### Pure Resque
+
+For any Resque job that you want to run in a Kubernetes job, you'll need
+to modify the class with two things:
 
 - `extend` the class with `Resque::Kubernetes::Job`
 - add a class method `job_manifest` that returns the Kubernetes manifest for the job
+  as a `Hash`
 
 ```ruby
 class ResourceIntensiveJob
@@ -50,6 +57,48 @@ class ResourceIntensiveJob
     end
 
     def job_manifest
+      YAML.safe_load(
+        <<~MANIFEST
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: worker-job
+          spec:
+            template:
+              metadata:
+                name: worker-job
+              spec:
+                containers:
+                - name: worker
+                  image: us.gcr.io/project-id/some-resque-worker
+                  env:
+                  - name: QUEUE
+                    value: high-memory
+        MANIFEST
+      )
+    end
+  end
+end
+```
+
+### ActiveJob (on Resque)
+
+For any ActiveJob that you want to run in a Kubernetes job, you'll need to
+modify the class with two things:
+
+- `include` `Resque::Kubernetes::Job` in the class
+- add an instance method `job_manifest` that returns the Kubernetes manifest for the job
+  as a `Hash`
+
+```ruby
+class ResourceIntensiveJob < ApplicationJob
+  include Resque::Kubernetes::Job
+  def perform
+    # ... your existing code
+  end
+
+  def job_manifest
+    YAML.safe_load(
       <<~MANIFEST
         apiVersion: batch/v1
         kind: Job
@@ -67,10 +116,12 @@ class ResourceIntensiveJob
                 - name: QUEUE
                   value: high-memory
       MANIFEST
-    end
+    )
   end
 end
 ```
+
+### Workers (for both)
 
 Make sure that the container image above, which is used to run the resque 
 worker, is built to include the `resque-kubernetes` gem as well. The gem will 
@@ -78,6 +129,13 @@ add `TERM_ON_EMPTY` to the environment variables. This tells the worker that
 whenever the queue is empty it should terminate the worker. Kubernetes will 
 then terminate the Job when the container is done running and will release the 
 resources.
+
+### Job manifest
+
+In the example above we show the manifest as a HEREDOC, just to make it
+simple. But you could also read this from a file, parse a template and insert
+values, or anything else you want to do in the method, as long as you return
+a valid Kubernetes Job manifest as a `Hash`.
 
 ## Configuration
 
@@ -88,10 +146,8 @@ your project:
 # config/initializers/resque-kubernetes.rb
 
 Resque::Kubernetes.configuration do |config|
-
  config.environments << "staging"
  config.max_workers = 10
-
 end
 ```
 
