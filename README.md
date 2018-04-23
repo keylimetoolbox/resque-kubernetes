@@ -243,9 +243,8 @@ they require a connection to a cluster. You can run these on your changes
 if you want to verify that the jobs are created correctly.
 
 This will use the default authentication on your system, which may is either
-the cluster the tests are running in (if you are doing that) or your Google
-Default Application Credentials, if you have `kubeclient` configured for
-a GKE cluster.
+the cluster the tests are running in (if you are doing that), your `kubclient`
+configuration, or your Google Default Application Credentials.
 
 ```bash
 rspec --tag type:e2e
