@@ -208,26 +208,56 @@ end
 - We probably need better namespace support, particularly for reaping
   finished jobs and pods.
 
-## Development
+## Contributing
+
+Bug reports and pull requests are welcome on GitHub at
+https://github.com/keylime-toolbox/resque-kubernetes.
+
+1. Fork it (`https://github.com/[my-github-username]/kubeclient/fork`)
+2. Create your feature branch (`git checkout -b my-new-feature`)
+3. Test your changes with `rake`, add new tests if needed
+4. Commit your changes (`git commit -am 'Add some feature'`)
+6. Push to the branch (`git push origin my-new-feature`)
+7. Open a new Pull Request
+
+
+### Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, 
-run `rake spec` to run the tests.
+run `rake` to run the test suite.
 
-You can run `bin/console` for an interactive prompt that will allow you to experiment.
+You can run `bin/console` for an interactive prompt that will allow you to
+experiment.
 
-To install this gem onto your local machine, run `bundle exec rake install`.
+Write test for any code that you add. Test all changes by running `rake`.
+This does the following, which you can also run separately while working.
+1. Tun unit tests: `rake spec`
+2. Make sure that your code matches the styles: `rubocop`
+3. Verify if any dependent gems have open CVEs (you must update these):
+   `rake bundle:audit` 
+
+### End to End Tests
+
+We don't run End to End (e2e) tests in the regular suite because
+they require a connection to a cluster. You can run these on your changes
+if you want to verify that the jobs are created correctly.
+
+This will use the default authentication on your system, which may is either
+the cluster the tests are running in (if you are doing that) or your Google
+Default Application Credentials, if you have `kubeclient` configured for
+a GKE cluster.
+
+```bash
+rspec --tag type:e2e
+```
+
+## Release
 
 To release a new version, update the version number in
 `lib/resque/kubernetes/version.rb` and the `CHANGELOG.md`, then run
 `bundle exec rake release`, which will create a git tag for the version,
 push git commits and tags, and push the `.gem` file to 
 [rubygems.org](https://rubygems.org).
-
-## Contributing
-
-Bug reports and pull requests are welcome on GitHub at 
-https://github.com/keylime-toolbox/resque-kubernetes.
-
 
 ## License
 
