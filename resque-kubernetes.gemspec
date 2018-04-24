@@ -25,10 +25,11 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency "bundler", "~> 1.16"
   spec.add_development_dependency "bundler-audit", "~> 0"
+  spec.add_development_dependency "googleauth", "~> 0.6"
   spec.add_development_dependency "rake", "~> 12.3"
   spec.add_development_dependency "rspec", "~> 3.7"
   spec.add_development_dependency "rubocop", "~> 0.52", ">= 0.52.1"
 
-  spec.add_dependency "kubeclient", "~> 2.2"
+  spec.add_dependency "kubeclient", ">= 2.2", "< 4.0"
   spec.add_dependency "resque", "~> 1.26"
 end
