@@ -1,3 +1,5 @@
+# 0.7.0
+- Update to support kubeclient 2.2 or 3.x
 # 0.6.0
 - Add support for ActiveJob when configured to be backed by Resque
 - When authorizing with `~/.kube/config` use Google Default Application Credentials rather than require a
