@@ -172,7 +172,7 @@ module Resque
             namespace:      namespace
         )
         running = resque_jobs.reject { |job| job.spec.completions == job.status.succeeded }
-        running.size == max_workers
+        running.size >= max_workers
       end
 
       def adjust_manifest(manifest)
