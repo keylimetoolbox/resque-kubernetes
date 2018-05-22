@@ -1,3 +1,6 @@
+# 0.8.0
+- Fix bug where enqueueing jobs would keep adding workers if worker count
+  was _greater_ than `max_workers`
 # 0.7.0
 - Update to support kubeclient 2.2 or 3.x
 # 0.6.0
