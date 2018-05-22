@@ -144,6 +144,23 @@ describe Resque::Kubernetes::Job do
           end
         end
 
+        context "when more that maximum workers are running" do
+          let(:workers) { 1 }
+
+          before do
+            allow(jobs_client).to receive(:get_jobs).and_return(
+                [
+                    working_job, K8sStub.new(spec: {completions: 1}, status: {succeeded: 0})
+                ]
+            )
+          end
+
+          it "does not try to create a new job" do
+            expect(Kubeclient::Resource).not_to receive(:new)
+            subject.before_enqueue_kubernetes_job
+          end
+        end
+
         context "when matching, completed jobs exist" do
           let(:workers) { 2 }
 

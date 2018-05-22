@@ -10,7 +10,7 @@ RSpec.describe "Create a job", type: "e2e" do
     # rubocop:disable Metrics/MethodLength
     def self.job_manifest
       {
-          "metadata"   => {
+          "metadata" => {
               "name"   => "thing",
               "labels" => {"e2e-tests" => "E2EThingExtendingJob"}
           },
@@ -18,12 +18,12 @@ RSpec.describe "Create a job", type: "e2e" do
               "template" => {
                   "spec" => {
                       "containers" => [
-                        {
-                            "name"    => "e2e-test",
-                            "image"   => "ubuntu",
-                            "command" => ["pwd"]
-                        }
-                    ]
+                          {
+                              "name"    => "e2e-test",
+                              "image"   => "ubuntu",
+                              "command" => ["pwd"]
+                          }
+                      ]
                   }
               }
           }
