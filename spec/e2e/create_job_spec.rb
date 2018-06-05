@@ -33,12 +33,13 @@ RSpec.describe "Create a job", type: "e2e" do
   end
 
   after do
-    resque_jobs = E2EThingExtendingJob.send(:jobs_client).get_jobs(
+    manager = Resque::Kubernetes::JobsManager.new(E2EThingExtendingJob)
+    resque_jobs = manager.send(:jobs_client).get_jobs(
         label_selector: "resque-kubernetes=job,e2e-tests=E2EThingExtendingJob"
     )
     resque_jobs.each do |job|
       begin
-        E2EThingExtendingJob.send(:jobs_client).delete_job(job.metadata.name, job.metadata.namespace)
+        manager.send(:jobs_client).delete_job(job.metadata.name, job.metadata.namespace)
       rescue KubeException => e
         raise unless e.error_code == 404
       end
@@ -47,10 +48,11 @@ RSpec.describe "Create a job", type: "e2e" do
   end
 
   it "launches a job in the cluster" do
+    manager = Resque::Kubernetes::JobsManager.new(E2EThingExtendingJob)
     # Don't run #before_enqueue_kubernetes_job because we don't want this test reaping finished jobs from elsewhere
-    E2EThingExtendingJob.send(:apply_kubernetes_job)
+    manager.apply_kubernetes_job
 
-    resque_jobs = E2EThingExtendingJob.send(:jobs_client).get_jobs(
+    resque_jobs = manager.send(:jobs_client).get_jobs(
         label_selector: "resque-kubernetes=job,e2e-tests=E2EThingExtendingJob"
     )
     expect(resque_jobs.count).to eq 1
