@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
+require "resque/kubernetes/configurable"
 require "resque/kubernetes/context_factory"
 require "resque/kubernetes/deep_hash"
 require "resque/kubernetes/dns_safe_random"
 require "resque/kubernetes/job"
+require "resque/kubernetes/jobs_manager"
 require "resque/kubernetes/version"
 require "resque/kubernetes/worker"
-require "resque/kubernetes/configurable"
 
 module Resque
   # Run Resque Jobs as Kubernetes Jobs with autoscaling.

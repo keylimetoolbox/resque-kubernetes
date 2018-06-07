@@ -1,3 +1,5 @@
+# master (Not yet released)
+- Update to not pollute the job class with our methods
 # 0.8.0
 - Fix bug where enqueueing jobs would keep adding workers if worker count
   was _greater_ than `max_workers`

@@ -45,4 +45,4 @@ Lint/UselessSetterCall:
   Exclude:
     # Rubocop is incorrectly flagging `term_on_empty` as local
     # See: https://github.com/bbatsov/rubocop/issues/5420
-    - lib/resque/kubernetes/job.rb
+    - lib/resque/kubernetes/jobs_manager.rb

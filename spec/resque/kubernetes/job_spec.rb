@@ -58,7 +58,7 @@ describe Resque::Kubernetes::Job do
   let(:jobs_client) { spy("jobs client") }
 
   before do
-    allow(subject).to receive(:jobs_client).and_return(jobs_client)
+    allow_any_instance_of(Resque::Kubernetes::JobsManager).to receive(:jobs_client).and_return(jobs_client)
   end
 
   shared_examples "before enqueue callback" do
@@ -74,7 +74,7 @@ describe Resque::Kubernetes::Job do
         end
 
         it "calls kubernetes APIs" do
-          expect(subject).to receive(:jobs_client).and_return(jobs_client)
+          expect_any_instance_of(Resque::Kubernetes::JobsManager).to receive(:jobs_client).and_return(jobs_client)
           subject.before_enqueue_kubernetes_job
         end
       end
@@ -93,7 +93,7 @@ describe Resque::Kubernetes::Job do
           end
 
           it "calls kubernetes APIs" do
-            expect(subject).to receive(:jobs_client).and_return(jobs_client)
+            expect_any_instance_of(Resque::Kubernetes::JobsManager).to receive(:jobs_client).and_return(jobs_client)
             subject.before_enqueue_kubernetes_job
           end
         end
