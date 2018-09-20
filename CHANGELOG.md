@@ -1,3 +1,9 @@
+# master (not yet released)
+- Fix design to set `INTERVAL=0` for the worker in the Kubernetes
+  job manifest, which tells `resque` to work until there are no more jobs,
+  rather than monkey-patching `Resque::Worker` to look for `TERM_ON_EMPTY`
+  environment variable.
+
 # v0.9.0
 - Update to not pollute the job class with our methods
 

@@ -269,16 +269,16 @@ describe Resque::Kubernetes::Job do
             end
           end
 
-          context "when TERM_ON_EMPTY environment is included" do
+          context "when INTERVAL environment is included" do
             before do
               manifest = subject.default_manifest.dup
               manifest["spec"]["template"]["spec"]["containers"][0]["env"] = [
-                  {"name" => "TERM_ON_EMPTY", "value" => "true"}
+                  {"name" => "INTERVAL", "value" => "5"}
               ]
               allow(subject).to receive(:job_manifest).and_return(manifest)
             end
 
-            it "ensures it is set to 1" do
+            it "ensures it is set to 0" do
               manifest = hash_including(
                   "spec" => hash_including(
                       "template" => hash_including(
@@ -286,7 +286,7 @@ describe Resque::Kubernetes::Job do
                               "containers" => array_including(
                                   hash_including(
                                       "env" => array_including(
-                                          hash_including("name" => "TERM_ON_EMPTY", "value" => "1")
+                                          hash_including("name" => "INTERVAL", "value" => "0")
                                       )
                                   )
                               )
@@ -299,8 +299,8 @@ describe Resque::Kubernetes::Job do
             end
           end
 
-          context "when TERM_ON_EMPTY environment is not set" do
-            it "ensures it is set to 1" do
+          context "when INTERVAL environment is not set" do
+            it "ensures it is set to 0" do
               manifest = hash_including(
                   "spec" => hash_including(
                       "template" => hash_including(
@@ -308,7 +308,7 @@ describe Resque::Kubernetes::Job do
                               "containers" => array_including(
                                   hash_including(
                                       "env" => array_including(
-                                          hash_including("name" => "TERM_ON_EMPTY", "value" => "1")
+                                          hash_including("name" => "INTERVAL", "value" => "0")
                                       )
                                   )
                               )
