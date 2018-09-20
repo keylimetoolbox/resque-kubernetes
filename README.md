@@ -123,18 +123,6 @@ class ResourceIntensiveJob < ApplicationJob
 end
 ```
 
-### Workers (for both)
-
-Ideally the container image above, which is used to run the resque
-worker, is built to include the `resque-kubernetes` gem as well. The gem will 
-set `INTERVAL` to 0 in the environment variables. This tells the worker that
-whenever the queue is empty it should terminate the worker. Kubernetes will 
-then terminate the Job when the container is done running and will release the 
-resources.
-
-If (for whatever reason) your image doesn't include `resque-kubernetes`, you must
-set the `INTERVAL` environment variable to 0 in your Kuberenetes manifest or container.
-
 ### Job manifest
 
 In the example above we show the manifest as a HEREDOC, just to make it
