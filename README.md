@@ -205,8 +205,6 @@ end
 - Support for other authentication and server URL options for `kubeclient`.
   See [the many examples](https://github.com/abonas/kubeclient#usage) in their
   README.
-- We probably need better namespace support, particularly for reaping
-  finished jobs and pods.
 
 ## Contributing
 

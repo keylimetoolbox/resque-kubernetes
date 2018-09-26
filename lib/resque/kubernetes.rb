@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "resque/kubernetes/configurable"
+require "resque/kubernetes/context/kubectl"
+require "resque/kubernetes/context/well_known"
 require "resque/kubernetes/context_factory"
 require "resque/kubernetes/deep_hash"
 require "resque/kubernetes/dns_safe_random"

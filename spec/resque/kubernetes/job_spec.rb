@@ -58,7 +58,8 @@ describe Resque::Kubernetes::Job do
   let(:jobs_client) { spy("jobs client") }
 
   before do
-    allow_any_instance_of(Resque::Kubernetes::JobsManager).to receive(:jobs_client).and_return(jobs_client)
+    allow(Kubeclient::GoogleApplicationDefaultCredentials).to receive(:token).and_return("token")
+    allow(Kubeclient::Client).to receive(:new).and_return(jobs_client)
   end
 
   shared_examples "before enqueue callback" do
@@ -74,7 +75,9 @@ describe Resque::Kubernetes::Job do
         end
 
         it "calls kubernetes APIs" do
-          expect_any_instance_of(Resque::Kubernetes::JobsManager).to receive(:jobs_client).and_return(jobs_client)
+          expect_any_instance_of(Resque::Kubernetes::JobsManager).to receive(:jobs_client).at_least(:once) do
+            jobs_client
+          end
           subject.before_enqueue_kubernetes_job
         end
       end
@@ -93,7 +96,9 @@ describe Resque::Kubernetes::Job do
           end
 
           it "calls kubernetes APIs" do
-            expect_any_instance_of(Resque::Kubernetes::JobsManager).to receive(:jobs_client).and_return(jobs_client)
+            expect_any_instance_of(Resque::Kubernetes::JobsManager).to receive(:jobs_client).at_least(:once) do
+              jobs_client
+            end
             subject.before_enqueue_kubernetes_job
           end
         end
@@ -321,15 +326,42 @@ describe Resque::Kubernetes::Job do
             end
           end
 
-          context "when the namespace is not included" do
-            it "sets it to 'default'" do
-              manifest = hash_including(
-                  "metadata" => hash_including(
-                      "namespace" => "default"
-                  )
-              )
-              expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
-              subject.before_enqueue_kubernetes_job
+          context "when the namespace is not included in the manifest" do
+            context "and no value is provided by the authentication context" do
+              it "sets it to 'default'" do
+                manifest = hash_including(
+                    "metadata" => hash_including(
+                        "namespace" => "default"
+                    )
+                )
+                expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
+                subject.before_enqueue_kubernetes_job
+              end
+            end
+
+            context "and the authentication context provides a namespace" do
+              let(:context) do
+                OpenStruct.new(
+                    endpoint:  "https://127.0.0.0",
+                    version:   "v1",
+                    namespace: "space",
+                    options:   {}
+                )
+              end
+
+              before do
+                allow(Resque::Kubernetes::ContextFactory).to receive(:context).and_return(context)
+              end
+
+              it "uses the context-provided namespace" do
+                manifest = hash_including(
+                    "metadata" => hash_including(
+                        "namespace" => "space"
+                    )
+                )
+                expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
+                subject.before_enqueue_kubernetes_job
+              end
             end
           end
 
