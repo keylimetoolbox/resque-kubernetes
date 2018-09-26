@@ -231,7 +231,7 @@ experiment.
 
 Write test for any code that you add. Test all changes by running `rake`.
 This does the following, which you can also run separately while working.
-1. Tun unit tests: `rake spec`
+1. Run unit tests: `appraisal rake spec`
 2. Make sure that your code matches the styles: `rubocop`
 3. Verify if any dependent gems have open CVEs (you must update these):
    `rake bundle:audit` 
@@ -239,10 +239,10 @@ This does the following, which you can also run separately while working.
 ### End to End Tests
 
 We don't run End to End (e2e) tests in the regular suite because
-they require a connection to a cluster. You can run these on your changes
-if you want to verify that the jobs are created correctly.
+they require a connection to a cluster. You should run these on your changes
+to verify that the jobs are created correctly.
 
-This will use the default authentication on your system, which may is either
+This will use the default authentication on your system, which is either
 the cluster the tests are running in (if you are doing that), your `kubclient`
 configuration, or your Google Default Application Credentials.
 
