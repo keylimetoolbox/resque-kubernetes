@@ -122,6 +122,18 @@ class ResourceIntensiveJob < ApplicationJob
   end
 end
 ```
+### Workers (for both)
+
+The resque worker can can be any container image that runs the `resque:work` `rake` task, for example:
+
+```bash
+bin/rails environment resque:work
+```
+
+The gem sets the environment variable `INTERVAL=0` for the Kubernetes Job which the `rake` task uses
+to when calling `Resque::Worker#work(interval)`. The value 0 tells Resque to terminate when the queue
+is empty. If your Docker image does not run the rake task, then you'll need to make sure you pass 0
+for the interval when calling `Resque::Worker#work`.
 
 ### Job manifest
 
