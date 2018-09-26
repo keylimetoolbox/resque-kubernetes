@@ -213,7 +213,7 @@ end
 Bug reports and pull requests are welcome on GitHub at
 https://github.com/keylime-toolbox/resque-kubernetes.
 
-1. Fork it (`https://github.com/[my-github-username]/kubeclient/fork`)
+1. Fork it (`https://github.com/[my-github-username]/resque-kubernetes/fork`)
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Test your changes with `rake`, add new tests if needed
 4. Commit your changes (`git commit -am 'Add some feature'`)
