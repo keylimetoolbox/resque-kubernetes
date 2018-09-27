@@ -11,7 +11,7 @@ RSpec.describe "Create a job", type: "e2e" do
     def self.job_manifest
       {
           "metadata" => {
-              "name"   => "thing",
+              "name"   => "e2ething",
               "labels" => {"e2e-tests" => "E2EThingExtendingJob"}
           },
           "spec"     => {
@@ -47,7 +47,7 @@ RSpec.describe "Create a job", type: "e2e" do
 
   end
 
-  it "launches a job in the cluster" do
+  it "launches a job in the cluster which completes when done" do
     manager = Resque::Kubernetes::JobsManager.new(E2EThingExtendingJob)
     # Don't run #before_enqueue_kubernetes_job because we don't want this test reaping finished jobs from elsewhere
     manager.apply_kubernetes_job
@@ -56,5 +56,6 @@ RSpec.describe "Create a job", type: "e2e" do
         label_selector: "resque-kubernetes=job,e2e-tests=E2EThingExtendingJob"
     )
     expect(resque_jobs.count).to eq 1
+    expect(resque_jobs.first.spec.completions).to eq 1
   end
 end

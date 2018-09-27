@@ -7,8 +7,8 @@ the container finishes and then it terminates the pod (as opposed to trying to
 restart the container).
 
 This gem takes advantage of that feature by starting up a Kubernetes Job to
-run a worker when a Resque job or ActiveJob is enqueued. It then allows the
-Resque worker to be modified to terminate when there are no more jobs in the queue.
+run a worker when a Resque job or ActiveJob is enqueued. It then tells the
+Resque worker to run until there are no more jobs in the queue.
 
 Why would you do this?
 
@@ -122,15 +122,18 @@ class ResourceIntensiveJob < ApplicationJob
   end
 end
 ```
-
 ### Workers (for both)
 
-Make sure that the container image above, which is used to run the resque 
-worker, is built to include the `resque-kubernetes` gem as well. The gem will 
-add `TERM_ON_EMPTY` to the environment variables. This tells the worker that 
-whenever the queue is empty it should terminate the worker. Kubernetes will 
-then terminate the Job when the container is done running and will release the 
-resources.
+The resque worker can can be any container image that runs the `resque:work` `rake` task, for example:
+
+```bash
+bin/rails environment resque:work
+```
+
+The gem sets the environment variable `INTERVAL=0` for the Kubernetes Job which the `rake` task uses
+to when calling `Resque::Worker#work(interval)`. The value 0 tells Resque to terminate when the queue
+is empty. If your Docker image does not run the rake task, then you'll need to make sure you pass 0
+for the interval when calling `Resque::Worker#work`.
 
 ### Job manifest
 

@@ -90,12 +90,12 @@ module Resque
 
       def container_term_on_empty(container)
         container["env"] ||= []
-        term_on_empty = container["env"].find { |env| env["name"] == "TERM_ON_EMPTY" }
+        term_on_empty = container["env"].find { |env| env["name"] == "INTERVAL" }
         unless term_on_empty
-          term_on_empty = {"name" => "TERM_ON_EMPTY"}
+          term_on_empty = {"name" => "INTERVAL"}
           container["env"] << term_on_empty
         end
-        term_on_empty["value"] = "1"
+        term_on_empty["value"] = "0"
       end
 
       def ensure_reset_policy(manifest)

@@ -9,7 +9,6 @@ require "resque/kubernetes/dns_safe_random"
 require "resque/kubernetes/job"
 require "resque/kubernetes/jobs_manager"
 require "resque/kubernetes/version"
-require "resque/kubernetes/worker"
 
 module Resque
   # Run Resque Jobs as Kubernetes Jobs with autoscaling.
@@ -26,5 +25,3 @@ module Resque
     define_setting :kubeclient, nil
   end
 end
-
-Resque::Worker.include Resque::Kubernetes::Worker

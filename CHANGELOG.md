@@ -1,3 +1,9 @@
+# v1.1.0
+- Fix design to set `INTERVAL=0` for the worker in the Kubernetes
+  job manifest, which tells `resque` to work until there are no more jobs,
+  rather than monkey-patching `Resque::Worker` to look for `TERM_ON_EMPTY`
+  environment variable.
+
 # v1.0.0
 **Breaking Change:**
 - Requires `kubeclient` 3.1.2 or 4.x
