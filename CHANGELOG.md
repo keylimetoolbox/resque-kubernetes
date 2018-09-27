@@ -1,4 +1,4 @@
-# master (not yet released)
+# v0.10.0
 - `kubeclient` may not be later than 3.0.0 due to change in signature of `Kubeclient::Config::Context#initialize`
   in `kubeclient` 3.1.0
 
