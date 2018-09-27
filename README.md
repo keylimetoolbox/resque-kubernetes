@@ -1,4 +1,5 @@
 # Resque::Kubernetes
+[![Gem Version](https://badge.fury.io/rb/resque-kubernetes.svg)](https://badge.fury.io/rb/resque-kubernetes)
 
 Run Resque (and ActiveJob) Workers as Kubernetes Jobs!
 
