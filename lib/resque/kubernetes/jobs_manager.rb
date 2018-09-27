@@ -10,7 +10,8 @@ module Resque
       private :owner
 
       def initialize(owner)
-        @owner = owner
+        @owner             = owner
+        @default_namespace = "default"
       end
 
       def reap_finished_jobs
@@ -39,20 +40,17 @@ module Resque
       private
 
       def jobs_client
-        return @jobs_client if @jobs_client
-        @jobs_client = client("/apis/batch")
+        @jobs_client ||= client("/apis/batch")
       end
 
       def client(scope)
+        return Resque::Kubernetes.kubeclient if Resque::Kubernetes.kubeclient
+
         context = ContextFactory.context
         return unless context
+        @default_namespace = context.namespace if context.namespace
 
-        Kubeclient::Client.new(
-            context.api_endpoint + scope,
-            context.api_version,
-            ssl_options:  context.ssl_options,
-            auth_options: context.auth_options
-        )
+        Kubeclient::Client.new(context.endpoint + scope, context.version, context.options)
       end
 
       def finished_jobs
@@ -105,7 +103,7 @@ module Resque
       end
 
       def ensure_namespace(manifest)
-        manifest["metadata"]["namespace"] ||= "default"
+        manifest["metadata"]["namespace"] ||= @default_namespace
       end
 
       def update_job_name(manifest)

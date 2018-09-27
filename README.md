@@ -200,13 +200,28 @@ class ResourceIntensiveJob
 end
 ```
 
-## To Do
+### kubeclient
 
-- Support for other authentication and server URL options for `kubeclient`.
-  See [the many examples](https://github.com/abonas/kubeclient#usage) in their
-  README.
-- We probably need better namespace support, particularly for reaping
-  finished jobs and pods.
+The gem will automatically connect to the Kubernetes server in the following cases:
+- You are running this in [a standard Kubernetes cluster](https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod)
+- You are running on a system with `kubeclient` installed and
+  - the default cluster context has credentials
+  - the default cluster is GKE and your system has 
+    [Google application default credentials](https://developers.google.com/identity/protocols/application-default-credentials)
+    installed
+
+There are many other ways to connect and you can do so by providing your own
+[configured `kubeclient`](https://github.com/abonas/kubeclient#usage):
+
+```ruby
+# config/initializers/resque-kubernetes.rb
+
+Resque::Kubernetes.configuration do |config|
+ config.kubeclient = Kubeclient::Client.new("http://localhost:8080/apis/batch")
+end
+```
+
+Because this uses the `Job` resource, make sure to connect to the `/apis/batch` API endpoint in your client.
 
 ## Contributing
 
@@ -231,7 +246,7 @@ experiment.
 
 Write test for any code that you add. Test all changes by running `rake`.
 This does the following, which you can also run separately while working.
-1. Tun unit tests: `rake spec`
+1. Run unit tests: `appraisal rake spec`
 2. Make sure that your code matches the styles: `rubocop`
 3. Verify if any dependent gems have open CVEs (you must update these):
    `rake bundle:audit` 
@@ -239,10 +254,10 @@ This does the following, which you can also run separately while working.
 ### End to End Tests
 
 We don't run End to End (e2e) tests in the regular suite because
-they require a connection to a cluster. You can run these on your changes
-if you want to verify that the jobs are created correctly.
+they require a connection to a cluster. You should run these on your changes
+to verify that the jobs are created correctly.
 
-This will use the default authentication on your system, which may is either
+This will use the default authentication on your system, which is either
 the cluster the tests are running in (if you are doing that), your `kubclient`
 configuration, or your Google Default Application Credentials.
 

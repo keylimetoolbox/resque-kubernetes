@@ -1,3 +1,12 @@
+# v1.0.0
+**Breaking Change:**
+- Requires `kubeclient` 3.1.2 or 4.x
+
+**Changes:**
+- Add `kubeclient` configuration option for connecting to any Kubernetes server
+- Use kubernetes namespace provided by cluster or `kubectl` configuration when available
+- Add Appraisal for testing with kubeclient 3.1.2 and 4.x
+
 # v0.10.0
 - `kubeclient` may not be later than 3.0.0 due to change in signature of `Kubeclient::Config::Context#initialize`
   in `kubeclient` 3.1.0
