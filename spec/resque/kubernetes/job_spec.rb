@@ -69,6 +69,21 @@ describe Resque::Kubernetes::Job do
       let(:done_pod)    { K8sStub.new(status: {phase: "Succeeded"}) }
       let(:working_pod) { K8sStub.new(status: {phase: "Running"}) }
 
+      context "when Resque::Kubernetes.kubeclient is defined" do
+        let(:client) { spy("custom client") }
+
+        before do
+          allow(Kubeclient::Client).to receive(:new).and_call_original
+          allow(Resque::Kubernetes).to receive(:kubeclient).and_return(client)
+        end
+
+        it "uses the provided client" do
+          expect(client).to receive(:get_jobs).at_least(:once).and_return([])
+          expect(client).to receive(:create_job)
+          subject.before_enqueue_kubernetes_job
+        end
+      end
+
       context "when Rails.env is not defined" do
         before do
           expect(defined? Rails).not_to be true

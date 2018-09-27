@@ -200,11 +200,28 @@ class ResourceIntensiveJob
 end
 ```
 
-## To Do
+### kubeclient
 
-- Support for other authentication and server URL options for `kubeclient`.
-  See [the many examples](https://github.com/abonas/kubeclient#usage) in their
-  README.
+The gem will automatically connect to the Kubernetes server in the following cases:
+- You are running this in [a standard Kubernetes cluster](https://kubernetes.io/docs/tasks/access-application-cluster/access-cluster/#accessing-the-api-from-a-pod)
+- You are running on a system with `kubeclient` installed and
+  - the default cluster context has credentials
+  - the default cluster is GKE and your system has 
+    [Google application default credentials](https://developers.google.com/identity/protocols/application-default-credentials)
+    installed
+
+There are many other ways to connect and you can do so by providing your own
+[configured `kubeclient`](https://github.com/abonas/kubeclient#usage):
+
+```ruby
+# config/initializers/resque-kubernetes.rb
+
+Resque::Kubernetes.configuration do |config|
+ config.kubeclient = Kubeclient::Client.new("http://localhost:8080/apis/batch")
+end
+```
+
+Because this uses the `Job` resource, make sure to connect to the `/apis/batch` API endpoint in your client.
 
 ## Contributing
 

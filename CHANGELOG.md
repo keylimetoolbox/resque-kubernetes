@@ -3,6 +3,7 @@
 - Requires `kubeclient` 3.1.2 or 4.x
 
 **Changes:**
+- Add `kubeclient` configuration option for connecting to any Kubernetes server
 - Use kubernetes namespace provided by cluster or `kubectl` configuration when available
 - Add Appraisal for testing with kubeclient 3.1.2 and 4.x
 

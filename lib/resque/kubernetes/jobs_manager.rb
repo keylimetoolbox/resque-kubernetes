@@ -40,11 +40,12 @@ module Resque
       private
 
       def jobs_client
-        return @jobs_client if @jobs_client
-        @jobs_client = client("/apis/batch")
+        @jobs_client ||= client("/apis/batch")
       end
 
       def client(scope)
+        return Resque::Kubernetes.kubeclient if Resque::Kubernetes.kubeclient
+
         context = ContextFactory.context
         return unless context
         @default_namespace = context.namespace if context.namespace

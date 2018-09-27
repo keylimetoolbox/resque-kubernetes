@@ -21,6 +21,9 @@ module Resque
 
     # Limit the number of workers that should be spun up, default 10
     define_setting :max_workers, 10
+
+    # A `kubeclient` for connection context, default attempts to read from cluster or `~/.kube/config`
+    define_setting :kubeclient, nil
   end
 end
 
