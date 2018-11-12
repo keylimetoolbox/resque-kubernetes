@@ -12,13 +12,13 @@ module Resque
       class << self
         # Returns an n-length string of DNS-safe characters.
         #
-        # n: The number of characters to return (default 5).
-        def random_chars(n = 5)
-          s = [SecureRandom.random_bytes(n)].pack("m*")
+        # number: The number of characters to return (default 5).
+        def random_chars(number = 5)
+          s = [SecureRandom.random_bytes(number)].pack("m*")
           s.delete!("=\n")
           s.tr!("+/_-", "0")
           s.tr!("A-Z", "a-z")
-          s[0...n]
+          s[0...number]
         end
       end
     end

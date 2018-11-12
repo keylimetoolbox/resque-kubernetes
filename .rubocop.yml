@@ -31,6 +31,9 @@ Style/FormatStringToken:
   EnforcedStyle: template
 Style/AsciiComments:
   Enabled: false
+Style/FrozenStringLiteralComment:
+  Exclude:
+    - "gemfiles/*"
 
 Metrics/BlockLength:
   Exclude:
@@ -45,4 +48,4 @@ Lint/UselessSetterCall:
   Exclude:
     # Rubocop is incorrectly flagging `term_on_empty` as local
     # See: https://github.com/bbatsov/rubocop/issues/5420
-    - lib/resque/kubernetes/jobs_manager.rb
+    - lib/resque/kubernetes/manifest_conformance.rb

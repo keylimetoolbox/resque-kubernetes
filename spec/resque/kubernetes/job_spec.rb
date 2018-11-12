@@ -44,30 +44,29 @@ describe Resque::Kubernetes::Job do
   class K8sStub < OpenStruct
     def initialize(hash)
       new_hash = hash.merge(metadata: {namespace: "default", name: "pod-#{Time.now.to_i}"})
-      deep_struct = new_hash.map do |key, value|
-        if value.is_a?(Hash)
-          [key, OpenStruct.new(value)]
-        else
-          [key, value]
-        end
-      end.to_h
-      super(deep_struct)
+      # Use JSON object_class to create a deep OpenStruct
+      super(JSON.parse(new_hash.to_json, object_class: OpenStruct))
     end
   end
 
-  let(:jobs_client) { spy("jobs client") }
+  let(:client) { spy("jobs client") }
 
   before do
     allow(Kubeclient::GoogleApplicationDefaultCredentials).to receive(:token).and_return("token")
-    allow(Kubeclient::Client).to receive(:new).and_return(jobs_client)
+    allow(Kubeclient::Client).to receive(:new).and_return(client)
   end
 
   shared_examples "before enqueue callback" do
     context "#before_enqueue_kubernetes_job" do
       let(:done_job)    { K8sStub.new(spec: {completions: 1}, status: {succeeded: 1}) }
       let(:working_job) { K8sStub.new(spec: {completions: 1}, status: {succeeded: 0}) }
-      let(:done_pod)    { K8sStub.new(status: {phase: "Succeeded"}) }
+      let(:done_pod) do
+        K8sStub.new(status: {phase: "Succeeded", containerStatuses: [{state: {terminated: {reason: "Completed"}}}]})
+      end
       let(:working_pod) { K8sStub.new(status: {phase: "Running"}) }
+      let(:oom_pod) do
+        K8sStub.new(status: {phase: "Succeeded", containerStatuses: [{state: {terminated: {reason: "OOMKilled"}}}]})
+      end
 
       context "when Resque::Kubernetes.kubeclient is defined" do
         let(:client) { spy("custom client") }
@@ -79,6 +78,7 @@ describe Resque::Kubernetes::Job do
 
         it "uses the provided client" do
           expect(client).to receive(:get_jobs).at_least(:once).and_return([])
+          expect(client).to receive(:get_pods).at_least(:once).and_return([])
           expect(client).to receive(:create_job)
           subject.before_enqueue_kubernetes_job
         end
@@ -90,8 +90,8 @@ describe Resque::Kubernetes::Job do
         end
 
         it "calls kubernetes APIs" do
-          expect_any_instance_of(Resque::Kubernetes::JobsManager).to receive(:jobs_client).at_least(:once) do
-            jobs_client
+          expect_any_instance_of(Resque::Kubernetes::JobsManager).to receive(:client).at_least(:once) do
+            client
           end
           subject.before_enqueue_kubernetes_job
         end
@@ -111,8 +111,8 @@ describe Resque::Kubernetes::Job do
           end
 
           it "calls kubernetes APIs" do
-            expect_any_instance_of(Resque::Kubernetes::JobsManager).to receive(:jobs_client).at_least(:once) do
-              jobs_client
+            expect_any_instance_of(Resque::Kubernetes::JobsManager).to receive(:client).at_least(:once) do
+              client
             end
             subject.before_enqueue_kubernetes_job
           end
@@ -124,7 +124,7 @@ describe Resque::Kubernetes::Job do
           end
 
           it "does not make any kubernetes calls" do
-            expect(subject).not_to receive(:jobs_client)
+            expect_any_instance_of(Resque::Kubernetes::JobsManager).not_to receive(:client)
             subject.before_enqueue_kubernetes_job
           end
         end
@@ -132,8 +132,8 @@ describe Resque::Kubernetes::Job do
 
       it "reaps any completed jobs matching our label" do
         jobs = [working_job, done_job]
-        expect(jobs_client).to receive(:get_jobs).with(label_selector: "resque-kubernetes=job").and_return(jobs)
-        expect(jobs_client).to receive(:delete_job).with(done_job.metadata.name, done_job.metadata.namespace)
+        expect(client).to receive(:get_jobs).with(label_selector: "resque-kubernetes=job").and_return(jobs)
+        expect(client).to receive(:delete_job).with(done_job.metadata.name, done_job.metadata.namespace)
         subject.before_enqueue_kubernetes_job
       end
 
@@ -141,8 +141,28 @@ describe Resque::Kubernetes::Job do
         let(:error) { KubeException.new(404, 'job "thing" not found', spy("response")) }
 
         before do
-          allow(jobs_client).to receive(:get_jobs).and_return([working_job, done_job])
-          allow(jobs_client).to receive(:delete_job).and_raise(error)
+          allow(client).to receive(:get_jobs).and_return([working_job, done_job])
+          allow(client).to receive(:delete_job).and_raise(error)
+        end
+
+        it "gracefully continues" do
+          expect { subject.before_enqueue_kubernetes_job }.not_to raise_error
+        end
+      end
+
+      it "reaps all successfully completed pods of the jobs matching our label" do
+        pods = [working_pod, done_pod, oom_pod]
+        expect(client).to receive(:get_pods).with(label_selector: "resque-kubernetes=pod").and_return(pods)
+        expect(client).to receive(:delete_pod).with(done_pod.metadata.name, done_pod.metadata.namespace)
+        subject.before_enqueue_kubernetes_job
+      end
+
+      context "when a pod is deleted while reaping completed pods" do
+        let(:error) { KubeException.new(404, 'pod "thing" not found', spy("response")) }
+
+        before do
+          allow(client).to receive(:get_pods).and_return([working_pod, done_pod])
+          allow(client).to receive(:delete_pod).and_raise(error)
         end
 
         it "gracefully continues" do
@@ -155,7 +175,7 @@ describe Resque::Kubernetes::Job do
           let(:workers) { 1 }
 
           before do
-            allow(jobs_client).to receive(:get_jobs).and_return([working_job])
+            allow(client).to receive(:get_jobs).and_return([working_job])
           end
 
           it "does not try to create a new job" do
@@ -168,7 +188,7 @@ describe Resque::Kubernetes::Job do
           let(:workers) { 1 }
 
           before do
-            allow(jobs_client).to receive(:get_jobs).and_return(
+            allow(client).to receive(:get_jobs).and_return(
                 [
                     working_job, K8sStub.new(spec: {completions: 1}, status: {succeeded: 0})
                 ]
@@ -185,11 +205,11 @@ describe Resque::Kubernetes::Job do
           let(:workers) { 2 }
 
           before do
-            allow(jobs_client).to receive(:get_jobs).and_return([done_job, working_job])
+            allow(client).to receive(:get_jobs).and_return([done_job, working_job])
           end
 
           it "creates a new job using the provided job manifest" do
-            expect(jobs_client).to receive(:create_job)
+            expect(client).to receive(:create_job)
             subject.before_enqueue_kubernetes_job
           end
         end
@@ -199,12 +219,12 @@ describe Resque::Kubernetes::Job do
           let(:workers) { 10 }
 
           before do
-            allow(jobs_client).to receive(:get_jobs).and_return([])
+            allow(client).to receive(:get_jobs).and_return([])
             allow(Kubeclient::Resource).to receive(:new).and_return(job)
           end
 
           it "creates a new job using the provided job manifest" do
-            expect(jobs_client).to receive(:create_job)
+            expect(client).to receive(:create_job)
             subject.before_enqueue_kubernetes_job
           end
 

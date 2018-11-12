@@ -8,6 +8,7 @@ require "resque/kubernetes/deep_hash"
 require "resque/kubernetes/dns_safe_random"
 require "resque/kubernetes/job"
 require "resque/kubernetes/jobs_manager"
+require "resque/kubernetes/manifest_conformance"
 require "resque/kubernetes/version"
 
 module Resque

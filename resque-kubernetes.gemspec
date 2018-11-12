@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-lib = File.expand_path("../lib", __FILE__)
+lib = File.expand_path("lib", __dir__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require "resque/kubernetes/version"
 
@@ -29,7 +29,8 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "googleauth", "~> 0.6"
   spec.add_development_dependency "rake", "~> 12.3"
   spec.add_development_dependency "rspec", "~> 3.7"
-  spec.add_development_dependency "rubocop", "~> 0.52", ">= 0.52.1"
+  # Pinned less than 0.56.0 until this is resolved: https://github.com/rubocop-hq/rubocop/issues/5975
+  spec.add_development_dependency "rubocop", "~> 0.52", ">= 0.52.1", "< 0.56.0"
 
   spec.add_dependency "kubeclient", ">= 3.1.2", "< 5.0"
   spec.add_dependency "resque", "~> 1.26"
