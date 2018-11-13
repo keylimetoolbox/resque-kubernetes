@@ -1,3 +1,6 @@
+# v1.2.0
+- Clean up finished pods that have successfully completed
+
 # v1.1.0
 - Fix design to set `INTERVAL=0` for the worker in the Kubernetes
   job manifest, which tells `resque` to work until there are no more jobs,
