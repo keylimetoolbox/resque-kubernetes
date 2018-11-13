@@ -2,10 +2,14 @@
 
 require "kubeclient"
 
+require_relative "manifest_conformance"
+
 module Resque
   module Kubernetes
     # Spins up Kubernetes Jobs to run Resque workers.
     class JobsManager
+      include Resque::Kubernetes::ManifestConformance
+
       attr_reader :owner
       private :owner
 
@@ -18,6 +22,16 @@ module Resque
         finished_jobs.each do |job|
           begin
             jobs_client.delete_job(job.metadata.name, job.metadata.namespace)
+          rescue KubeException => e
+            raise unless e.error_code == 404
+          end
+        end
+      end
+
+      def reap_finished_pods
+        finished_pods.each do |pod|
+          begin
+            pods_client.delete_pod(pod.metadata.name, pod.metadata.namespace)
           rescue KubeException => e
             raise unless e.error_code == 404
           end
@@ -43,6 +57,10 @@ module Resque
         @jobs_client ||= client("/apis/batch")
       end
 
+      def pods_client
+        @pods_client ||= client("")
+      end
+
       def client(scope)
         return Resque::Kubernetes.kubeclient if Resque::Kubernetes.kubeclient
 
@@ -58,6 +76,15 @@ module Resque
         resque_jobs.select { |job| job.spec.completions == job.status.succeeded }
       end
 
+      def finished_pods
+        resque_jobs = pods_client.get_pods(label_selector: "resque-kubernetes=pod")
+        resque_jobs.select do |pod|
+          pod.status.phase == "Succeeded" && pod.status.containerStatuses.all? do |status|
+            status.state.terminated.reason == "Completed"
+          end
+        end
+      end
+
       def jobs_maxed?(name, namespace)
         resque_jobs = jobs_client.get_jobs(
             label_selector: "resque-kubernetes=job,resque-kubernetes-group=#{name}",
@@ -65,49 +92,6 @@ module Resque
         )
         running = resque_jobs.reject { |job| job.spec.completions == job.status.succeeded }
         running.size >= owner.max_workers
-      end
-
-      def adjust_manifest(manifest)
-        add_labels(manifest)
-        ensure_term_on_empty(manifest)
-        ensure_reset_policy(manifest)
-        update_job_name(manifest)
-      end
-
-      def add_labels(manifest)
-        manifest.deep_add(%w[metadata labels resque-kubernetes], "job")
-        manifest["metadata"]["labels"]["resque-kubernetes-group"] = manifest["metadata"]["name"]
-        manifest.deep_add(%w[spec template metadata labels resque-kubernetes], "pod")
-      end
-
-      def ensure_term_on_empty(manifest)
-        manifest["spec"]["template"]["spec"] ||= {}
-        manifest["spec"]["template"]["spec"]["containers"] ||= []
-        manifest["spec"]["template"]["spec"]["containers"].each do |container|
-          container_term_on_empty(container)
-        end
-      end
-
-      def container_term_on_empty(container)
-        container["env"] ||= []
-        term_on_empty = container["env"].find { |env| env["name"] == "INTERVAL" }
-        unless term_on_empty
-          term_on_empty = {"name" => "INTERVAL"}
-          container["env"] << term_on_empty
-        end
-        term_on_empty["value"] = "0"
-      end
-
-      def ensure_reset_policy(manifest)
-        manifest["spec"]["template"]["spec"]["restartPolicy"] ||= "OnFailure"
-      end
-
-      def ensure_namespace(manifest)
-        manifest["metadata"]["namespace"] ||= @default_namespace
-      end
-
-      def update_job_name(manifest)
-        manifest["metadata"]["name"] += "-#{DNSSafeRandom.random_chars}"
       end
     end
   end
