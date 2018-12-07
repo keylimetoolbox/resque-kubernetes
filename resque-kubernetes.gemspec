@@ -34,4 +34,5 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "kubeclient", ">= 3.1.2", "< 5.0"
   spec.add_dependency "resque", "~> 1.26"
+  spec.add_dependency "retriable", "~> 3.0"
 end
