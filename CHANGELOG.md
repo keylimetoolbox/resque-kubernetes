@@ -1,3 +1,6 @@
+# v1.3.0
+- Retry when a timeout occurs connecting to the Kubernetes API server
+
 # v1.2.0
 - Clean up finished pods that have successfully completed
 
