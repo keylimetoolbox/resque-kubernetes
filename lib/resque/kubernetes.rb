@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "retriable"
+
 require "resque/kubernetes/configurable"
 require "resque/kubernetes/context/kubectl"
 require "resque/kubernetes/context/well_known"
@@ -9,6 +11,7 @@ require "resque/kubernetes/dns_safe_random"
 require "resque/kubernetes/job"
 require "resque/kubernetes/jobs_manager"
 require "resque/kubernetes/manifest_conformance"
+require "resque/kubernetes/retriable_client"
 require "resque/kubernetes/version"
 
 module Resque

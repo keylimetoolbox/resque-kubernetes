@@ -62,8 +62,12 @@ module Resque
       end
 
       def client(scope)
-        return Resque::Kubernetes.kubeclient if Resque::Kubernetes.kubeclient
+        return RetriableClient.new(Resque::Kubernetes.kubeclient) if Resque::Kubernetes.kubeclient
+        client = build_client(scope)
+        RetriableClient.new(client) if client
+      end
 
+      def build_client(scope)
         context = ContextFactory.context
         return unless context
         @default_namespace = context.namespace if context.namespace

@@ -2,7 +2,7 @@
 
 module Resque
   module Kubernetes
-    # Provides methods to ensure a mannifest conforms to a job specification
+    # Provides functions to ensure a manifest conforms to a job specification
     # and includes details needed for resque-kubernetes
     module ManifestConformance
       def adjust_manifest(manifest)
