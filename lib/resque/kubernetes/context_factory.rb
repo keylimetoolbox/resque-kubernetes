@@ -10,7 +10,6 @@ module Resque
 
       class << self
         def context
-          # TODO: Add ability to load this from config
           [
               Resque::Kubernetes::Context::WellKnown,
               Resque::Kubernetes::Context::Kubectl
