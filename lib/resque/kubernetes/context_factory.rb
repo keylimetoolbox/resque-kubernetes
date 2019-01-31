@@ -18,6 +18,8 @@ module Resque
             context = context_type.new
             return context.context if context.applicable?
           end
+
+          nil
         end
       end
     end
