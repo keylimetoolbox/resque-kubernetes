@@ -1,3 +1,6 @@
+# (Unreleased)
+- Allow resque 2.0 but retain support for 1.26 or later 
+
 # v1.3.0
 - Retry when a timeout occurs connecting to the Kubernetes API server
 
