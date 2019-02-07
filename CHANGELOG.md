@@ -1,7 +1,7 @@
 **Breaking Change:**
-- The `environment` configuration as been replaced by a more flexible `activated` properties.
+- The `environments` configuration as been replaced by a more flexible `activated` properties.
 
-Here's how to migrate from the `environment` property to the `activated` property:
+Here's how to migrate from the `environments` property to the `activated` property:
 
 Before:
 ```ruby
