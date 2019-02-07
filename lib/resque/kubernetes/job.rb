@@ -83,9 +83,7 @@ module Resque
 
       # A before_enqueue hook that adds worker jobs to the cluster.
       def before_enqueue_kubernetes_job(*_args)
-        if defined? Rails
-          return unless Resque::Kubernetes.environments.include?(Rails.env)
-        end
+        return unless Resque::Kubernetes.activated
 
         manager = JobsManager.new(self)
         manager.reap_finished_jobs

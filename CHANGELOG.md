@@ -1,3 +1,30 @@
+**Breaking Change:**
+- The `environment` configuration as been replaced by a more flexible `activated` properties.
+
+Here's how to migrate from the `environment` property to the `activated` property:
+
+Before:
+```ruby
+# config/initializers/resque-kubernetes.rb
+
+Resque::Kubernetes.configuration do |config|
+ config.environments << "staging"
+ config.max_workers = 10
+end
+```
+
+After:
+```ruby
+# config/initializers/resque-kubernetes.rb
+
+Resque::Kubernetes.configuration do |config|
+ config.activated   = Rails.env.production? || Rails.env.staging?
+ config.max_workers = 10
+end
+```
+
+⚠️ By default, this gem is not activated.
+
 # v1.3.0
 - Retry when a timeout occurs connecting to the Kubernetes API server
 

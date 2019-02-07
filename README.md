@@ -152,19 +152,16 @@ your project:
 # config/initializers/resque-kubernetes.rb
 
 Resque::Kubernetes.configuration do |config|
- config.environments << "staging"
+ config.activated = Rails.env.production? || Rails.env.staging?
  config.max_workers = 10
 end
 ```
 
-### `environments`
+### `activated`
 
-> This only works under Rails, when `Rails.env` is set.
+⚠️ By default, the `activated` property is set to `false` which means that, by default, this plugin will not be launched.
 
-By default `Resque::Kubernetes` will only manage Kubernetes Jobs in
-`:production`. If you want to add other environments you can update this list
-(`config.environments << "staging"`) or replace it (`config.environments =
-["production", "development"]`).
+You should not activate this Resque plugin in environments that are not run inside a Kubernetes (for example, your CI env).
 
 ### `max_workers`
 
