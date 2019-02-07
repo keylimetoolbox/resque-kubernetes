@@ -152,16 +152,16 @@ your project:
 # config/initializers/resque-kubernetes.rb
 
 Resque::Kubernetes.configuration do |config|
- config.activated = Rails.env.production? || Rails.env.staging?
+ config.enabled     = Rails.env.production? || Rails.env.staging?
  config.max_workers = 10
 end
 ```
 
-### `activated`
+### `enabled`
 
-⚠️ By default, the `activated` property is set to `false` which means that, by default, this plugin will not be launched.
+⚠️ By default, the `enabled` property is set to `false` which means that, by default, this plugin will not be launched.
 
-You should not activate this Resque plugin in environments that are not run inside a Kubernetes (for example, your CI env).
+You should not enable this Resque plugin in environments that are not run inside a Kubernetes (for example, your CI env).
 
 ### `max_workers`
 

@@ -20,7 +20,7 @@ module Resque
     extend Configurable
 
     # By default, this plugin is not active.
-    define_setting :activated, false
+    define_setting :enabled, false
 
     # Limit the number of workers that should be spun up, default 10
     define_setting :max_workers, 10
