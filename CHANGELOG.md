@@ -23,7 +23,7 @@ Resque::Kubernetes.configuration do |config|
 end
 ```
 
-⚠️ By default, this gem is no enabled.
+⚠️ By default, this gem is not enabled.
 
 # v1.3.0
 - Retry when a timeout occurs connecting to the Kubernetes API server
