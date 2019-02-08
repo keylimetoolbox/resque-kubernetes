@@ -84,9 +84,9 @@ describe Resque::Kubernetes::Job do
         end
       end
 
-      context "when Rails.env is not defined" do
+      context "when `enabled` is set to `true`" do
         before do
-          expect(defined? Rails).not_to be true
+          allow(Resque::Kubernetes).to receive(:enabled).and_return(true)
         end
 
         it "calls kubernetes APIs" do
@@ -97,36 +97,14 @@ describe Resque::Kubernetes::Job do
         end
       end
 
-      context "when Rails.env is defined" do
-        let(:rails_stub) { Class.new }
-
+      context "when `enabled` is set to `false`" do
         before do
-          stub_const("Rails", rails_stub)
-          allow(rails_stub).to receive(:env).and_return("test")
+          allow(Resque::Kubernetes).to receive(:enabled).and_return(false)
         end
 
-        context "and is included in the supported environments" do
-          before do
-            allow(Resque::Kubernetes).to receive(:environments).and_return(["test"])
-          end
-
-          it "calls kubernetes APIs" do
-            expect_any_instance_of(Resque::Kubernetes::JobsManager).to receive(:client).at_least(:once) do
-              client
-            end
-            subject.before_enqueue_kubernetes_job
-          end
-        end
-
-        context "and is not included in the supported environments" do
-          before do
-            allow(Resque::Kubernetes).to receive(:environments).and_return(["production"])
-          end
-
-          it "does not make any kubernetes calls" do
-            expect_any_instance_of(Resque::Kubernetes::JobsManager).not_to receive(:client)
-            subject.before_enqueue_kubernetes_job
-          end
+        it "does not make any kubernetes calls" do
+          expect_any_instance_of(Resque::Kubernetes::JobsManager).not_to receive(:client)
+          subject.before_enqueue_kubernetes_job
         end
       end
 

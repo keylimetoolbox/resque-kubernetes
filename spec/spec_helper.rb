@@ -7,6 +7,10 @@ RSpec.configure do |config|
   config.order = "random"
   config.filter_run_when_matching focus: true
   config.filter_run_excluding type: "e2e"
+
+  config.before(:each) do
+    allow(Resque::Kubernetes).to receive(:enabled).and_return(true)
+  end
 end
 
 # In tests, don't do exponential back-off, and don't pause between tries
