@@ -161,7 +161,7 @@ end
 
 ⚠️ By default, the `enabled` property is set to `false` which means that, by default, this plugin will not be launched.
 
-You should not enable this Resque plugin in environments that are not run inside a Kubernetes (for example, your CI env).
+You should not enable this Resque plugin in environments that are not run inside a Kubernetes cluster (for example, your CI env).
 
 ### `max_workers`
 
