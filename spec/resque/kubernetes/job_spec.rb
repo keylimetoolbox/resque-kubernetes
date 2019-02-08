@@ -84,14 +84,7 @@ describe Resque::Kubernetes::Job do
         end
       end
 
-      context "when `enabled` is not set by the user" do
-        it "does not make any kubernetes calls" do
-          expect_any_instance_of(Resque::Kubernetes::JobsManager).not_to receive(:client)
-          subject.before_enqueue_kubernetes_job
-        end
-      end
-
-      context "when `enabled` is set to `true` by the user" do
+      context "when `enabled` is set to `true`" do
         before do
           allow(Resque::Kubernetes).to receive(:enabled).and_return(true)
         end
@@ -104,7 +97,7 @@ describe Resque::Kubernetes::Job do
         end
       end
 
-      context "when `enabled` is set to `false` by the user" do
+      context "when `enabled` is set to `false`" do
         before do
           allow(Resque::Kubernetes).to receive(:enabled).and_return(false)
         end
