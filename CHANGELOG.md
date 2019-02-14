@@ -1,32 +1,33 @@
-# (Unreleased)
+# V2.0.0
 **Breaking Change:**
-- The `environments` configuration as been replaced by a more flexible `enabled` properties.
+- The `environments` configuration as been replaced by a more flexible `enabled` property.
 
-Here's how to migrate from the `environments` property to the `enabled` property:
+  Here's how to migrate from the `environments` property to the `enabled` property:
 
-Before:
-```ruby
-# config/initializers/resque-kubernetes.rb
+  Before:
+  ```ruby
+  # config/initializers/resque-kubernetes.rb
 
-Resque::Kubernetes.configuration do |config|
- config.environments << "staging"
- config.max_workers = 10
-end
-```
+  Resque::Kubernetes.configuration do |config|
+   config.environments << "staging"
+   config.max_workers = 10
+  end
+  ```
 
-After:
-```ruby
-# config/initializers/resque-kubernetes.rb
+  After:
+  ```ruby
+  # config/initializers/resque-kubernetes.rb
 
-Resque::Kubernetes.configuration do |config|
- config.enabled     = Rails.env.production? || Rails.env.staging?
- config.max_workers = 10
-end
-```
+  Resque::Kubernetes.configuration do |config|
+   config.enabled     = Rails.env.production? || Rails.env.staging?
+   config.max_workers = 10
+  end
+  ```
+    
+  ⚠️ By default, this gem is not enabled.
 
-⚠️ By default, this gem is not enabled.
-
-- Allow resque 2.0 but retain support for 1.26 or later
+**Changes:**
+- Allow resque 2.0 but retain support for 1.26 or later.
 
 # v1.3.0
 - Retry when a timeout occurs connecting to the Kubernetes API server
