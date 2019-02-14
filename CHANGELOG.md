@@ -1,3 +1,4 @@
+# (Unreleased)
 **Breaking Change:**
 - The `environments` configuration as been replaced by a more flexible `enabled` properties.
 
@@ -24,6 +25,8 @@ end
 ```
 
 ⚠️ By default, this gem is not enabled.
+
+- Allow resque 2.0 but retain support for 1.26 or later
 
 # v1.3.0
 - Retry when a timeout occurs connecting to the Kubernetes API server
