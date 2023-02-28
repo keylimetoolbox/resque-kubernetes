@@ -72,16 +72,16 @@ module Resque
         return unless context
         @default_namespace = context.namespace if context.namespace
 
-        Kubeclient::Client.new(context.endpoint + scope, context.version, context.options)
+        Kubeclient::Client.new(context.endpoint + scope, context.version, **context.options)
       end
 
       def finished_jobs
-        resque_jobs = jobs_client.get_jobs(label_selector: "resque-kubernetes=job")
+        resque_jobs = jobs_client.get_jobs({label_selector: "resque-kubernetes=job"})
         resque_jobs.select { |job| job.spec.completions == job.status.succeeded }
       end
 
       def finished_pods
-        resque_jobs = pods_client.get_pods(label_selector: "resque-kubernetes=pod")
+        resque_jobs = pods_client.get_pods({label_selector: "resque-kubernetes=pod"})
         resque_jobs.select do |pod|
           pod.status.phase == "Succeeded" && pod.status.containerStatuses.all? do |status|
             status.state.terminated.reason == "Completed"
@@ -90,10 +90,10 @@ module Resque
       end
 
       def jobs_maxed?(name, namespace)
-        resque_jobs = jobs_client.get_jobs(
+        resque_jobs = jobs_client.get_jobs({
             label_selector: "resque-kubernetes=job,resque-kubernetes-group=#{name}",
             namespace:      namespace
-        )
+        })
         running = resque_jobs.reject { |job| job.spec.completions == job.status.succeeded }
         running.size >= owner.max_workers
       end

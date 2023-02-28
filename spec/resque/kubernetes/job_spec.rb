@@ -110,7 +110,7 @@ describe Resque::Kubernetes::Job do
 
       it "reaps any completed jobs matching our label" do
         jobs = [working_job, done_job]
-        expect(client).to receive(:get_jobs).with(label_selector: "resque-kubernetes=job").and_return(jobs)
+        expect(client).to receive(:get_jobs).with({label_selector: "resque-kubernetes=job"}).and_return(jobs)
         expect(client).to receive(:delete_job).with(done_job.metadata.name, done_job.metadata.namespace)
         subject.before_enqueue_kubernetes_job
       end
@@ -130,7 +130,7 @@ describe Resque::Kubernetes::Job do
 
       it "reaps all successfully completed pods of the jobs matching our label" do
         pods = [working_pod, done_pod, oom_pod]
-        expect(client).to receive(:get_pods).with(label_selector: "resque-kubernetes=pod").and_return(pods)
+        expect(client).to receive(:get_pods).with({label_selector: "resque-kubernetes=pod"}).and_return(pods)
         expect(client).to receive(:delete_pod).with(done_pod.metadata.name, done_pod.metadata.namespace)
         subject.before_enqueue_kubernetes_job
       end

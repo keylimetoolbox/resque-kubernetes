@@ -14,12 +14,16 @@ module Resque
         end
 
         def context
+          options = {
+            auth_options: {bearer_token_file: TOKEN_FILE},
+            ssl_options:  ssl_options
+          }
+
           Resque::Kubernetes::ContextFactory::Context.new(
               "https://kubernetes.default.svc",
               "v1",
               namespace,
-              auth_options: {bearer_token_file: TOKEN_FILE},
-              ssl_options:  ssl_options
+              options
           )
         end
 
