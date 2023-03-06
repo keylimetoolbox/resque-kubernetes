@@ -1,3 +1,12 @@
+# V3.0.0
+**Breaking Change:**
+- Drop support for Ruby 2.7.
+- Drop support for `kubeclient` 3.x.
+
+**Changes:**
+- Add support for Ruby 3.0.
+- Requires `kubeclient` >= 4.9.3.
+
 # V2.0.0
 **Breaking Change:**
 - The `environments` configuration as been replaced by a more flexible `enabled` property.
