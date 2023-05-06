@@ -12,6 +12,7 @@ module Resque
       #
       # name:    The name of the setting.
       # default: A default value for the setting. (Optional)
+      # rubocop: disable Style/ClassVars
       def define_setting(name, default = nil)
         class_variable_set("@@#{name}", default)
 
@@ -23,6 +24,7 @@ module Resque
           class_variable_get("@@#{name}")
         end
       end
+      # rubocop: enable Style/ClassVars
 
       private
 

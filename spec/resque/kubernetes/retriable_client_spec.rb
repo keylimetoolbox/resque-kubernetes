@@ -3,15 +3,16 @@
 require "spec_helper"
 
 describe Resque::Kubernetes::RetriableClient do
-  let(:kubeclient) { double("Kubeclient::Client", get_pods: "datum") }
-
   subject { Resque::Kubernetes::RetriableClient.new(kubeclient) }
+
+  let(:kubeclient) { double("Kubeclient::Client", get_pods: "datum") }
 
   context "when a method on the client raises Kubeclient::HttpError" do
     let(:error) { Kubeclient::HttpError.new(0, message, "body") }
+
     context "and that has a 'Timed out' message" do
       before do
-        expect(kubeclient).to receive(:get_pods).exactly(2).times.and_raise(error)
+        expect(kubeclient).to receive(:get_pods).twice.and_raise(error)
       end
 
       let(:message) { "Timed out connecting to server" }

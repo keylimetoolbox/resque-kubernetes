@@ -3,46 +3,46 @@
 require "spec_helper"
 require "googleauth"
 
-RSpec.describe "Create a job", type: "e2e" do
-  class E2EThingExtendingJob
-    extend Resque::Kubernetes::Job
+class E2EThingExtendingJob
+  extend Resque::Kubernetes::Job
 
-    # rubocop:disable Metrics/MethodLength
-    def self.job_manifest
-      {
-          "metadata" => {
-              "name"   => "e2ething",
-              "labels" => {"e2e-tests" => "E2EThingExtendingJob"}
-          },
-          "spec"     => {
-              "template" => {
-                  "spec" => {
-                      "containers" => [
-                          {
-                              "name"    => "e2e-test",
-                              "image"   => "ubuntu",
-                              "command" => ["pwd"]
-                          }
-                      ]
-                  }
-              }
-          }
-      }
-    end
-    # rubocop:enable Metrics/MethodLength
+  # rubocop:disable Metrics/MethodLength
+  def self.job_manifest
+    {
+        "metadata" => {
+            "name"   => "e2ething",
+            "labels" => {"e2e-tests" => "E2EThingExtendingJob"}
+        },
+        "spec"     => {
+            "template" => {
+                "spec" => {
+                    "containers" => [
+                        {
+                            "name"    => "e2e-test",
+                            "image"   => "ubuntu",
+                            "command" => ["pwd"]
+                        }
+                    ]
+                }
+            }
+        }
+    }
   end
+  # rubocop:enable Metrics/MethodLength
+end
 
+RSpec.describe "Create a job", type: "e2e" do
   after do
     manager = Resque::Kubernetes::JobsManager.new(E2EThingExtendingJob)
     resque_jobs = manager.send(:jobs_client).get_jobs(
-        label_selector: "resque-kubernetes=job,e2e-tests=E2EThingExtendingJob"
+      label_selector: "resque-kubernetes=job,e2e-tests=E2EThingExtendingJob"
     )
     resque_jobs.each do |job|
-      begin
-        manager.send(:jobs_client).delete_job(job.metadata.name, job.metadata.namespace)
-      rescue KubeException => e
-        raise unless e.error_code == 404
-      end
+
+      manager.send(:jobs_client).delete_job(job.metadata.name, job.metadata.namespace)
+    rescue KubeException => e
+      raise unless e.error_code == 404
+
     end
 
   end
@@ -53,7 +53,7 @@ RSpec.describe "Create a job", type: "e2e" do
     manager.apply_kubernetes_job
 
     resque_jobs = manager.send(:jobs_client).get_jobs(
-        label_selector: "resque-kubernetes=job,e2e-tests=E2EThingExtendingJob"
+      label_selector: "resque-kubernetes=job,e2e-tests=E2EThingExtendingJob"
     )
     expect(resque_jobs.count).to eq 1
     expect(resque_jobs.first.spec.completions).to eq 1

@@ -20,21 +20,17 @@ module Resque
 
       def reap_finished_jobs
         finished_jobs.each do |job|
-          begin
-            jobs_client.delete_job(job.metadata.name, job.metadata.namespace)
-          rescue KubeException => e
-            raise unless e.error_code == 404
-          end
+          jobs_client.delete_job(job.metadata.name, job.metadata.namespace)
+        rescue KubeException => e
+          raise unless e.error_code == 404
         end
       end
 
       def reap_finished_pods
         finished_pods.each do |pod|
-          begin
-            pods_client.delete_pod(pod.metadata.name, pod.metadata.namespace)
-          rescue KubeException => e
-            raise unless e.error_code == 404
-          end
+          pods_client.delete_pod(pod.metadata.name, pod.metadata.namespace)
+        rescue KubeException => e
+          raise unless e.error_code == 404
         end
       end
 
@@ -63,6 +59,7 @@ module Resque
 
       def client(scope)
         return RetriableClient.new(Resque::Kubernetes.kubeclient) if Resque::Kubernetes.kubeclient
+
         client = build_client(scope)
         RetriableClient.new(client) if client
       end
@@ -70,6 +67,7 @@ module Resque
       def build_client(scope)
         context = ContextFactory.context
         return unless context
+
         @default_namespace = context.namespace if context.namespace
 
         Kubeclient::Client.new(context.endpoint + scope, context.version, **context.options)
@@ -91,9 +89,9 @@ module Resque
 
       def jobs_maxed?(name, namespace)
         resque_jobs = jobs_client.get_jobs({
-            label_selector: "resque-kubernetes=job,resque-kubernetes-group=#{name}",
-            namespace:      namespace
-        })
+                                               label_selector: "resque-kubernetes=job,resque-kubernetes-group=#{name}",
+                                               namespace:      namespace
+                                           })
         running = resque_jobs.reject { |job| job.spec.completions == job.status.succeeded }
         running.size >= owner.max_workers
       end

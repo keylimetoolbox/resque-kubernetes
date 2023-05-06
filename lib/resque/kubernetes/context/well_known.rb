@@ -15,15 +15,15 @@ module Resque
 
         def context
           options = {
-            auth_options: {bearer_token_file: TOKEN_FILE},
-            ssl_options:  ssl_options
+              auth_options: {bearer_token_file: TOKEN_FILE},
+              ssl_options:  ssl_options
           }
 
           Resque::Kubernetes::ContextFactory::Context.new(
-              "https://kubernetes.default.svc",
-              "v1",
-              namespace,
-              options
+            "https://kubernetes.default.svc",
+            "v1",
+            namespace,
+            options
           )
         end
 
@@ -31,11 +31,13 @@ module Resque
 
         def namespace
           return nil unless File.exist?(NAMESPACE_FILE)
+
           File.read(NAMESPACE_FILE)
         end
 
         def ssl_options
           return {} unless File.exist?(CA_FILE)
+
           {ca_file: CA_FILE}
         end
       end

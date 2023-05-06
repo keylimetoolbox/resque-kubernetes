@@ -2,53 +2,62 @@
 
 require "spec_helper"
 
+class ThingExtendingJob
+  extend Resque::Kubernetes::Job
+
+  def self.job_manifest
+    default_manifest
+  end
+
+  def self.default_manifest
+    {
+        "metadata" => {"name" => "thing"},
+        "spec"     => {
+            "template" => {
+                "spec" => {"containers" => [{}]}
+            }
+        }
+    }
+  end
+end
+
+class ThingIncludingJob
+  include Resque::Kubernetes::Job
+
+  def job_manifest
+    default_manifest
+  end
+
+  def default_manifest
+    {
+        "metadata" => {"name" => "thing"},
+        "spec"     => {
+            "template" => {
+                "spec" => {"containers" => [{}]}
+            }
+        }
+    }
+  end
+end
+
+# rubocop: disable Style/OpenStructUse
+class K8sStub < OpenStruct
+  def initialize(hash)
+    new_hash = hash.merge(metadata: {namespace: "default", name: "pod-#{Time.now.to_i}"})
+    # Use JSON object_class to create a deep OpenStruct
+    super(JSON.parse(new_hash.to_json, object_class: OpenStruct))
+  end
+end
+# rubocop: enable Style/OpenStructUse
+
+ContextDouble = Struct.new(
+  :endpoint,
+  :version,
+  :namespace,
+  :options
+)
+
 describe Resque::Kubernetes::Job do
-  class ThingExtendingJob
-    extend Resque::Kubernetes::Job
-
-    def self.job_manifest
-      default_manifest
-    end
-
-    def self.default_manifest
-      {
-          "metadata" => {"name" => "thing"},
-          "spec"     => {
-              "template" => {
-                  "spec" => {"containers" => [{}]}
-              }
-          }
-      }
-    end
-  end
-
-  class ThingIncludingJob
-    include Resque::Kubernetes::Job
-
-    def job_manifest
-      default_manifest
-    end
-
-    def default_manifest
-      {
-          "metadata" => {"name" => "thing"},
-          "spec"     => {
-              "template" => {
-                  "spec" => {"containers" => [{}]}
-              }
-          }
-      }
-    end
-  end
-
-  class K8sStub < OpenStruct
-    def initialize(hash)
-      new_hash = hash.merge(metadata: {namespace: "default", name: "pod-#{Time.now.to_i}"})
-      # Use JSON object_class to create a deep OpenStruct
-      super(JSON.parse(new_hash.to_json, object_class: OpenStruct))
-    end
-  end
-
   let(:client) { spy("jobs client") }
 
   before do
@@ -57,7 +66,7 @@ describe Resque::Kubernetes::Job do
   end
 
   shared_examples "before enqueue callback" do
-    context "#before_enqueue_kubernetes_job" do
+    describe "#before_enqueue_kubernetes_job" do
       let(:done_job)    { K8sStub.new(spec: {completions: 1}, status: {succeeded: 1}) }
       let(:working_job) { K8sStub.new(spec: {completions: 1}, status: {succeeded: 0}) }
       let(:done_pod) do
@@ -167,9 +176,9 @@ describe Resque::Kubernetes::Job do
 
           before do
             allow(client).to receive(:get_jobs).and_return(
-                [
-                    working_job, K8sStub.new(spec: {completions: 1}, status: {succeeded: 0})
-                ]
+              [
+                  working_job, K8sStub.new(spec: {completions: 1}, status: {succeeded: 0})
+              ]
             )
           end
 
@@ -208,20 +217,20 @@ describe Resque::Kubernetes::Job do
 
           it "labels the job and the pod" do
             manifest = hash_including(
-                "metadata" => hash_including(
-                    "labels" => hash_including(
-                        "resque-kubernetes" => "job"
-                    )
-                ),
-                "spec"     => hash_including(
-                    "template" => hash_including(
-                        "metadata" => hash_including(
-                            "labels" => hash_including(
-                                "resque-kubernetes" => "pod"
-                            )
-                        )
-                    )
+              "metadata" => hash_including(
+                "labels" => hash_including(
+                  "resque-kubernetes" => "job"
                 )
+              ),
+              "spec"     => hash_including(
+                "template" => hash_including(
+                  "metadata" => hash_including(
+                    "labels" => hash_including(
+                      "resque-kubernetes" => "pod"
+                    )
+                  )
+                )
+              )
             )
             expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
             subject.before_enqueue_kubernetes_job
@@ -229,11 +238,11 @@ describe Resque::Kubernetes::Job do
 
           it "label the job to group it based on the provided name in the manifest" do
             manifest = hash_including(
-                "metadata" => hash_including(
-                    "labels" => hash_including(
-                        "resque-kubernetes-group" => "thing"
-                    )
+              "metadata" => hash_including(
+                "labels" => hash_including(
+                  "resque-kubernetes-group" => "thing"
                 )
+              )
             )
             expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
             subject.before_enqueue_kubernetes_job
@@ -241,9 +250,9 @@ describe Resque::Kubernetes::Job do
 
           it "updates the job name to make it unique" do
             manifest = hash_including(
-                "metadata" => hash_including(
-                    "name" => match(/^thing-[a-z0-9]{5}$/)
-                )
+              "metadata" => hash_including(
+                "name" => match(/^thing-[a-z0-9]{5}$/)
+              )
             )
             expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
             subject.before_enqueue_kubernetes_job
@@ -258,13 +267,13 @@ describe Resque::Kubernetes::Job do
 
             it "retains it" do
               manifest = hash_including(
-                  "spec" => hash_including(
-                      "template" => hash_including(
-                          "spec" => hash_including(
-                              "restartPolicy" => "Always"
-                          )
-                      )
+                "spec" => hash_including(
+                  "template" => hash_including(
+                    "spec" => hash_including(
+                      "restartPolicy" => "Always"
+                    )
                   )
+                )
               )
               expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
               subject.before_enqueue_kubernetes_job
@@ -274,13 +283,13 @@ describe Resque::Kubernetes::Job do
           context "when the restart policy is not set" do
             it "ensures it is set to OnFailure" do
               manifest = hash_including(
-                  "spec" => hash_including(
-                      "template" => hash_including(
-                          "spec" => hash_including(
-                              "restartPolicy" => "OnFailure"
-                          )
-                      )
+                "spec" => hash_including(
+                  "template" => hash_including(
+                    "spec" => hash_including(
+                      "restartPolicy" => "OnFailure"
+                    )
                   )
+                )
               )
               expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
               subject.before_enqueue_kubernetes_job
@@ -298,19 +307,19 @@ describe Resque::Kubernetes::Job do
 
             it "ensures it is set to 0" do
               manifest = hash_including(
-                  "spec" => hash_including(
-                      "template" => hash_including(
-                          "spec" => hash_including(
-                              "containers" => array_including(
-                                  hash_including(
-                                      "env" => array_including(
-                                          hash_including("name" => "INTERVAL", "value" => "0")
-                                      )
-                                  )
-                              )
+                "spec" => hash_including(
+                  "template" => hash_including(
+                    "spec" => hash_including(
+                      "containers" => array_including(
+                        hash_including(
+                          "env" => array_including(
+                            hash_including("name" => "INTERVAL", "value" => "0")
                           )
+                        )
                       )
+                    )
                   )
+                )
               )
               expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
               subject.before_enqueue_kubernetes_job
@@ -320,19 +329,19 @@ describe Resque::Kubernetes::Job do
           context "when INTERVAL environment is not set" do
             it "ensures it is set to 0" do
               manifest = hash_including(
-                  "spec" => hash_including(
-                      "template" => hash_including(
-                          "spec" => hash_including(
-                              "containers" => array_including(
-                                  hash_including(
-                                      "env" => array_including(
-                                          hash_including("name" => "INTERVAL", "value" => "0")
-                                      )
-                                  )
-                              )
+                "spec" => hash_including(
+                  "template" => hash_including(
+                    "spec" => hash_including(
+                      "containers" => array_including(
+                        hash_including(
+                          "env" => array_including(
+                            hash_including("name" => "INTERVAL", "value" => "0")
                           )
+                        )
                       )
+                    )
                   )
+                )
               )
               expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
               subject.before_enqueue_kubernetes_job
@@ -343,9 +352,9 @@ describe Resque::Kubernetes::Job do
             context "and no value is provided by the authentication context" do
               it "sets it to 'default'" do
                 manifest = hash_including(
-                    "metadata" => hash_including(
-                        "namespace" => "default"
-                    )
+                  "metadata" => hash_including(
+                    "namespace" => "default"
+                  )
                 )
                 expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
                 subject.before_enqueue_kubernetes_job
@@ -354,11 +363,11 @@ describe Resque::Kubernetes::Job do
 
             context "and the authentication context provides a namespace" do
               let(:context) do
-                OpenStruct.new(
-                    endpoint:  "https://127.0.0.0",
-                    version:   "v1",
-                    namespace: "space",
-                    options:   {}
+                ContextDouble.new(
+                  "https://127.0.0.0",
+                  "v1",
+                  "space",
+                  {}
                 )
               end
 
@@ -368,9 +377,9 @@ describe Resque::Kubernetes::Job do
 
               it "uses the context-provided namespace" do
                 manifest = hash_including(
-                    "metadata" => hash_including(
-                        "namespace" => "space"
-                    )
+                  "metadata" => hash_including(
+                    "namespace" => "space"
+                  )
                 )
                 expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
                 subject.before_enqueue_kubernetes_job
@@ -387,9 +396,9 @@ describe Resque::Kubernetes::Job do
 
             it "retains it" do
               manifest = hash_including(
-                  "metadata" => hash_including(
-                      "namespace" => "staging"
-                  )
+                "metadata" => hash_including(
+                  "namespace" => "staging"
+                )
               )
               expect(Kubeclient::Resource).to receive(:new).with(manifest).and_return(job)
               subject.before_enqueue_kubernetes_job

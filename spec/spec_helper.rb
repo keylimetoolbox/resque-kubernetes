@@ -8,7 +8,7 @@ RSpec.configure do |config|
   config.filter_run_when_matching focus: true
   config.filter_run_excluding type: "e2e"
 
-  config.before(:each) do
+  config.before do
     allow(Resque::Kubernetes).to receive(:enabled).and_return(true)
   end
 end
@@ -20,7 +20,7 @@ Retriable.configure do |c|
   c.base_interval = 0
   c.tries         = 2
 
-  c.contexts.keys.each do |context|
+  c.contexts.each_key do |context|
     c.contexts[context][:tries]         = 2
     c.contexts[context][:base_interval] = 0
   end

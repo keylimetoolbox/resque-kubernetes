@@ -23,16 +23,10 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_development_dependency "appraisal"
-  spec.add_development_dependency "bundler", "~> 2.0"
-  spec.add_development_dependency "bundler-audit", "~> 0"
-  spec.add_development_dependency "googleauth", "~> 0.6"
-  spec.add_development_dependency "rake", "~> 12.3"
-  spec.add_development_dependency "rspec", "~> 3.7"
-  # Pinned less than 0.56.0 until this is resolved: https://github.com/rubocop-hq/rubocop/issues/5975
-  spec.add_development_dependency "rubocop", "~> 0.52", ">= 0.52.1", "< 0.56.0"
+  spec.required_ruby_version = ">= 3.0"
 
   spec.add_dependency "kubeclient", ">= 4.9.3", "< 5.0"
   spec.add_dependency "resque", ">= 1.26"
   spec.add_dependency "retriable", "~> 3.0"
+  spec.metadata["rubygems_mfa_required"] = "true"
 end
