@@ -12,12 +12,16 @@ module Resque
         def context
           config = Kubeclient::Config.read(kubeconfig)
 
+          options = {
+            auth_options: auth_options(config),
+            ssl_options: config.context.ssl_options
+          }
+
           Resque::Kubernetes::ContextFactory::Context.new(
               config.context.api_endpoint,
               config.context.api_version,
               config.context.namespace,
-              auth_options: auth_options(config),
-              ssl_options:  config.context.ssl_options
+              options
           )
         end
 

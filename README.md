@@ -212,7 +212,7 @@ The gem will automatically connect to the Kubernetes server in the following cas
     installed
 
 There are many other ways to connect and you can do so by providing your own
-[configured `kubeclient`](https://github.com/abonas/kubeclient#usage):
+[configured `kubeclient`](https://github.com/ManageIQ/kubeclient#usage):
 
 ```ruby
 # config/initializers/resque-kubernetes.rb
