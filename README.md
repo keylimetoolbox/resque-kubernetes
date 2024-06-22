@@ -95,6 +95,7 @@ modify the class with two things:
 ```ruby
 class ResourceIntensiveJob < ApplicationJob
   include Resque::Kubernetes::Job
+  queue_as :high_memory
 
   def perform
     # ... your existing code
@@ -117,7 +118,7 @@ class ResourceIntensiveJob < ApplicationJob
                 image: us.gcr.io/project-id/some-resque-worker
                 env:
                 - name: QUEUE
-                  value: high-memory
+                  value: high_memory
       MANIFEST
     )
   end
